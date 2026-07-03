@@ -29,7 +29,9 @@ Start debugging iOS network calls like a wizard, without extra code! Wormholy ma
 - [x] View request stats, including HTTP methods breakdown, status code distribution, error types, response size stats, and more.
 
 <p align="center">
-  <img src="screens.webp" alt="Screens"/>
+  <img src="screens.webp" alt="HTTP request screens"/>
+  <br/>
+  <img src="screens-websocket.webp" alt="WebSocket screens"/>
 </p>
 
 ## Requirements
