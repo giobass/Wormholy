@@ -113,6 +113,7 @@ Wormholy can capture:
 
 - Connection URL.
 - Request headers, when the task is created with `URLRequest`.
+- Response headers from the handshake, when available.
 - Requested WebSocket protocols.
 - Negotiated protocol, when available.
 - Sent and received text/data messages.
