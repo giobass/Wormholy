@@ -34,7 +34,7 @@ internal struct BodyDetailView: View {
     private let kind: Kind
 
     init(dataBody: Data, kind: Kind) {
-        if let body = String(data: dataBody, encoding: .utf8) {
+        if let body = String(data: dataBody, encoding: .utf8), !body.isEmpty {
             self.dataBody = body.prettyPrintedJSON ?? body
         } else {
             self.dataBody = "No body available"
