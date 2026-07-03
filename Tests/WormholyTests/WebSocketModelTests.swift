@@ -81,34 +81,37 @@ final class WebSocketModelTests: XCTestCase {
     }
 
     @MainActor
-    func testRefineConnectionMetadataUpgradesNormalizedSchemeToWebSocket() {
+    func testRefineConnectionMetadataUpgradesNormalizedSchemeToWebSocket() async {
         // URLSession's `webSocketTask(with: URL)` delegates internally to `webSocketTask(with:
         // URLRequest)`, which normalizes ws/wss to http/https. This is what corrects it back.
         let model = WebSocketModel(url: "https://example.com/socket", host: "example.com", scheme: "https")
         let wssURL = URL(string: "wss://example.com/socket")!
 
         model.refineConnectionMetadataIfNeeded(url: wssURL, headers: [:], protocols: [])
+        await waitForMainQueue()
 
         XCTAssertEqual(model.url, wssURL.absoluteString)
         XCTAssertEqual(model.scheme, "wss")
     }
 
     @MainActor
-    func testRefineConnectionMetadataDoesNotDowngradeWebSocketScheme() {
+    func testRefineConnectionMetadataDoesNotDowngradeWebSocketScheme() async {
         let model = WebSocketModel(url: "wss://example.com/socket", host: "example.com", scheme: "wss")
 
         model.refineConnectionMetadataIfNeeded(url: URL(string: "https://example.com/socket")!, headers: [:], protocols: [])
+        await waitForMainQueue()
 
         XCTAssertEqual(model.scheme, "wss")
     }
 
     @MainActor
-    func testRefineConnectionMetadataFillsInMissingProtocolsAndHeaders() {
+    func testRefineConnectionMetadataFillsInMissingProtocolsAndHeaders() async {
         let model = WebSocketModel(url: "https://example.com/socket", host: "example.com", scheme: "https")
 
         model.refineConnectionMetadataIfNeeded(url: URL(string: "wss://example.com/socket")!,
                                                 headers: ["Authorization": "Bearer token"],
                                                 protocols: ["chat"])
+        await waitForMainQueue()
 
         XCTAssertEqual(model.requestHeaders["Authorization"], "Bearer token")
         XCTAssertEqual(model.requestedProtocols, ["chat"])

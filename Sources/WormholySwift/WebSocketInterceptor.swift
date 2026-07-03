@@ -26,8 +26,11 @@ internal enum WebSocketInterceptor {
     private static let swizzleLock = NSLock()
 
     internal static func install() {
-        guard !isInstalled else { return }
-        isInstalled = true
+        swizzleLock.lock()
+        let alreadyInstalled = isInstalled
+        if !alreadyInstalled { isInstalled = true }
+        swizzleLock.unlock()
+        guard !alreadyInstalled else { return }
 
         wormholySwizzleInstanceMethod(URLSession.self,
                                        #selector(URLSession.webSocketTask(with:) as (URLSession) -> (URL) -> URLSessionWebSocketTask),
@@ -181,6 +184,17 @@ public final class WHWebSocketRecorder: NSObject {
 
     @objc public static func recordOpened(_ task: URLSessionWebSocketTask, protocol negotiatedProtocol: String?) {
         task.wormholyModel?.markOpened(protocol: negotiatedProtocol)
+
+        // Foundation populates the task's `response` with the HTTP handshake's 101
+        // Switching Protocols response (headers included) once the socket opens.
+        if let httpResponse = task.response as? HTTPURLResponse {
+            let headers = httpResponse.allHeaderFields.reduce(into: [String: String]()) { result, entry in
+                if let key = entry.key as? String, let value = entry.value as? String {
+                    result[key] = value
+                }
+            }
+            task.wormholyModel?.updateResponseHeaders(headers)
+        }
     }
 
     @objc public static func recordClosed(_ task: URLSessionWebSocketTask,

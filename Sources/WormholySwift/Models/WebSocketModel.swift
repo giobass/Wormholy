@@ -76,12 +76,12 @@ internal enum WebSocketConnectionState: Equatable {
 
 internal class WebSocketModel: Identifiable, ObservableObject, Equatable {
     internal let id: String
-    internal private(set) var url: String
-    internal private(set) var host: String?
-    internal private(set) var scheme: String?
-    internal private(set) var requestHeaders: [String: String]
-    internal private(set) var responseHeaders: [String: String]
-    internal private(set) var requestedProtocols: [String]
+    @Published internal private(set) var url: String
+    @Published internal private(set) var host: String?
+    @Published internal private(set) var scheme: String?
+    @Published internal private(set) var requestHeaders: [String: String]
+    @Published internal private(set) var responseHeaders: [String: String]
+    @Published internal private(set) var requestedProtocols: [String]
     internal let startDate: Date
 
     @Published internal private(set) var messages: [WebSocketMessage] = []
@@ -123,18 +123,20 @@ internal class WebSocketModel: Identifiable, ObservableObject, Equatable {
     /// swizzled, the same task can get attached more than once; this refines the already
     /// -attached model instead of creating a second, orphaned one.
     internal func refineConnectionMetadataIfNeeded(url candidate: URL, headers: [String: String], protocols: [String]) {
-        let candidateIsWebSocketScheme = ["ws", "wss"].contains(candidate.scheme?.lowercased() ?? "")
-        let currentIsWebSocketScheme = ["ws", "wss"].contains(scheme?.lowercased() ?? "")
-        if candidateIsWebSocketScheme && !currentIsWebSocketScheme {
-            url = candidate.absoluteString
-            host = candidate.host
-            scheme = candidate.scheme
-        }
-        if requestHeaders.isEmpty && !headers.isEmpty {
-            requestHeaders = headers
-        }
-        if requestedProtocols.isEmpty && !protocols.isEmpty {
-            requestedProtocols = protocols
+        DispatchQueue.main.async {
+            let candidateIsWebSocketScheme = ["ws", "wss"].contains(candidate.scheme?.lowercased() ?? "")
+            let currentIsWebSocketScheme = ["ws", "wss"].contains(self.scheme?.lowercased() ?? "")
+            if candidateIsWebSocketScheme && !currentIsWebSocketScheme {
+                self.url = candidate.absoluteString
+                self.host = candidate.host
+                self.scheme = candidate.scheme
+            }
+            if self.requestHeaders.isEmpty && !headers.isEmpty {
+                self.requestHeaders = headers
+            }
+            if self.requestedProtocols.isEmpty && !protocols.isEmpty {
+                self.requestedProtocols = protocols
+            }
         }
     }
 

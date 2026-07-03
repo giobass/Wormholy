@@ -19,6 +19,7 @@ final class WebSocketInterceptorTests: XCTestCase {
 
         let url = URL(string: "wss://example.com/socket/\(UUID().uuidString)")!
         let task = URLSession.shared.webSocketTask(with: url)
+        await waitForMainQueue()
 
         XCTAssertEqual(task.wormholyModel?.url, url.absoluteString)
         XCTAssertEqual(task.wormholyModel?.host, url.host)
@@ -44,8 +45,15 @@ final class WebSocketInterceptorTests: XCTestCase {
 
         let url = URL(string: "wss://example.com/socket/\(UUID().uuidString)")!
         let task = URLSession.shared.webSocketTask(with: url, protocols: ["chat", "superchat"])
+        await waitForMainQueue()
 
         XCTAssertEqual(task.wormholyModel?.requestedProtocols, ["chat", "superchat"])
+    }
+
+    private func waitForMainQueue() async {
+        await withCheckedContinuation { continuation in
+            DispatchQueue.main.async { continuation.resume() }
+        }
     }
 
     func testDisabledInterceptorDoesNotAttachModel() {
