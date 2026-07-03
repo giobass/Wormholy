@@ -19,8 +19,9 @@ public class Wormholy: NSObject
         set { CustomHTTPProtocol.ignoredHosts = newValue }
     }
     
-    /// Limit the logging count
+    /// Limit the logging count.
     ///
+    /// This limit is shared between HTTP requests and WebSocket connections - it is not tracked separately per feature.
     @objc public static var limit: NSNumber? {
         get {
             Task { @MainActor in
@@ -102,7 +103,18 @@ public class Wormholy: NSObject
         }
         sessionConfiguration.protocolClasses = urlProtocolClasses
     }
-    
+
+    /// Toggles the tracking of native `URLSessionWebSocketTask` traffic in Wormholy.
+    /// Independent from `setEnabled`, since WebSocket swizzling intercepts every
+    /// `send`/`receive` call and some apps may want to opt out of that overhead
+    /// even while HTTP tracking stays on.
+    @objc public static func setWebSocketEnabled(_ enable: Bool) {
+        if enable {
+            WebSocketInterceptor.install()
+        }
+        WebSocketInterceptor.isEnabled = enable
+    }
+
     // MARK: - Navigation
     static func presentWormholyFlow() {
         // Check if RequestsView is already presented
