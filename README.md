@@ -54,7 +54,7 @@ You can also integrate Wormholy using the **Swift Package Manager**!
 
 ### Configuration Options
 
-- **Ignored Hosts**: Specify hosts to be excluded from logging using `Wormholy.ignoredHosts`. This is useful for ignoring traffic to certain domains.
+- **Ignored Hosts**: Specify hosts to be excluded from logging using `Wormholy.ignoredHosts`. This is useful for ignoring traffic to certain domains, and applies to both HTTP requests and WebSocket connections.
 - **Logging Limit**: Control the number of logs retained with `Wormholy.limit`. This helps manage memory usage by limiting the amount of data stored. The same limit applies to both HTTP requests and WebSocket connections - it's not tracked separately per feature.
 - **Default Filter**: Set a default filter for the search box with `Wormholy.defaultFilter` to streamline your debugging process.
 - **Enable/Disable HTTP Tracking**: Use `Wormholy.setEnabled(_:)` to toggle HTTP request tracking globally. You can also enable or disable it for specific `URLSessionConfiguration` instances using `Wormholy.setEnabled(_:sessionConfiguration:)`.
@@ -162,7 +162,7 @@ From the demo app you can:
 
 ### Notes on Ignored Hosts
 
-`Wormholy.ignoredHosts` uses suffix matching on the request host.
+`Wormholy.ignoredHosts` uses suffix matching on the request host, and applies to both HTTP requests and WebSocket connections.
 
 For example, if you set:
 
@@ -170,7 +170,7 @@ For example, if you set:
 Wormholy.ignoredHosts = ["example.com"]
 ```
 
-Wormholy will ignore requests to both `example.com` and subdomains such as `api.example.com`.
+Wormholy will ignore HTTP traffic and WebSocket connections to both `example.com` and subdomains such as `api.example.com` / `wss://api.example.com`.
 
 ### Triggering Wormholy
 

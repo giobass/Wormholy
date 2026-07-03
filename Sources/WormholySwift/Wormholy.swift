@@ -12,8 +12,10 @@ import SwiftUI
 
 public class Wormholy: NSObject
 {
-    /// Hosts that will be ignored from being recorded
+    /// Hosts that will be ignored from being recorded.
     ///
+    /// Uses suffix matching on the request host, and applies to both HTTP requests
+    /// and WebSocket connections.
     @objc public static var ignoredHosts: [String] {
         get { return CustomHTTPProtocol.ignoredHosts }
         set { CustomHTTPProtocol.ignoredHosts = newValue }

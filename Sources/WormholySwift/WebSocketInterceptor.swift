@@ -53,6 +53,7 @@ internal enum WebSocketInterceptor {
 
     fileprivate static func attachModel(to task: URLSessionWebSocketTask, url: URL?, headers: [String: String], protocols: [String]) {
         guard isEnabled, let url = url else { return }
+        guard let host = url.host, CustomHTTPProtocol.ignoredHosts.filter({ host.hasSuffix($0) }).isEmpty else { return }
 
         ensureSwizzledForActualClass(of: task)
 
