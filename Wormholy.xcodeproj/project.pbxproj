@@ -17,6 +17,7 @@
 		450871A5207E5C7700EE2D31 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450871A1207E5C7700EE2D31 /* Config.swift */; };
 		450871A6207E5C7700EE2D31 /* Routing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450871A2207E5C7700EE2D31 /* Routing.swift */; };
 		450871A7207E5C7700EE2D31 /* DataFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450871A3207E5C7700EE2D31 /* DataFetcher.swift */; };
+		455B5A272FBF400100A1B2C3 /* WebSocketEchoClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 455B5A262FBF400100A1B2C3 /* WebSocketEchoClient.swift */; };
 		455B5A0A2FBF400100A1B2C3 /* UIViewControllerExtensionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 455B5A082FBF400100A1B2C3 /* UIViewControllerExtensionTests.swift */; };
 		455B5A292FBF400100A1B2C3 /* CustomHTTPProtocolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 455B5A282FBF400100A1B2C3 /* CustomHTTPProtocolTests.swift */; };
 		455B5A212FBF400100A1B2C3 /* WebSocketModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 455B5A202FBF400100A1B2C3 /* WebSocketModelTests.swift */; };
@@ -49,6 +50,7 @@
 		450871A1207E5C7700EE2D31 /* Config.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
 		450871A2207E5C7700EE2D31 /* Routing.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Routing.swift; sourceTree = "<group>"; };
 		450871A3207E5C7700EE2D31 /* DataFetcher.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DataFetcher.swift; sourceTree = "<group>"; };
+		455B5A262FBF400100A1B2C3 /* WebSocketEchoClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketEchoClient.swift; sourceTree = "<group>"; };
 		455B5A082FBF400100A1B2C3 /* UIViewControllerExtensionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIViewControllerExtensionTests.swift; sourceTree = "<group>"; };
 		455B5A282FBF400100A1B2C3 /* CustomHTTPProtocolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomHTTPProtocolTests.swift; sourceTree = "<group>"; };
 		455B5A202FBF400100A1B2C3 /* WebSocketModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketModelTests.swift; sourceTree = "<group>"; };
@@ -97,6 +99,7 @@
 			children = (
 				450871A1207E5C7700EE2D31 /* Config.swift */,
 				450871A3207E5C7700EE2D31 /* DataFetcher.swift */,
+				455B5A262FBF400100A1B2C3 /* WebSocketEchoClient.swift */,
 				450871A0207E5C7700EE2D31 /* HTTPValidation.swift */,
 				450871A2207E5C7700EE2D31 /* Routing.swift */,
 			);
@@ -240,6 +243,7 @@
 			files = (
 				4508718E207E59FF00EE2D31 /* ViewController.swift in Sources */,
 				450871A7207E5C7700EE2D31 /* DataFetcher.swift in Sources */,
+				455B5A272FBF400100A1B2C3 /* WebSocketEchoClient.swift in Sources */,
 				4508718C207E59FF00EE2D31 /* AppDelegate.swift in Sources */,
 				450871A6207E5C7700EE2D31 /* Routing.swift in Sources */,
 				450871A5207E5C7700EE2D31 /* Config.swift in Sources */,
