@@ -158,10 +158,4 @@ final class WebSocketModelTests: XCTestCase {
 
         XCTAssertEqual(model.messages.first.map(WebSocketModelBeautifier.bodyText), "plain text message")
     }
-
-    private func waitForMainQueue() async {
-        await withCheckedContinuation { continuation in
-            DispatchQueue.main.async { continuation.resume() }
-        }
-    }
 }

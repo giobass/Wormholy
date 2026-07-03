@@ -50,12 +50,6 @@ final class WebSocketInterceptorTests: XCTestCase {
         XCTAssertEqual(task.wormholyModel?.requestedProtocols, ["chat", "superchat"])
     }
 
-    private func waitForMainQueue() async {
-        await withCheckedContinuation { continuation in
-            DispatchQueue.main.async { continuation.resume() }
-        }
-    }
-
     func testDisabledInterceptorDoesNotAttachModel() {
         Wormholy.setWebSocketEnabled(false)
 
