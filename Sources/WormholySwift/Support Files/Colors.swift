@@ -32,6 +32,26 @@ internal struct Colors {
             }
         }
     }
+
+    internal struct WebSocket {
+        static let Connecting = Color(hex: "#D9A441")
+        static let Open = Color(hex: "#2E86AB")
+        static let Closed = Color(hex: "#6B6F76")
+        static let Failed = Color(hex: "#D32C58")
+
+        static func getStateColor(_ state: WebSocketConnectionState) -> Color {
+            switch state {
+            case .connecting:
+                return Colors.WebSocket.Connecting
+            case .open:
+                return Colors.WebSocket.Open
+            case .closed:
+                return Colors.WebSocket.Closed
+            case .failed:
+                return Colors.WebSocket.Failed
+            }
+        }
+    }
 }
 
 private extension Color {
