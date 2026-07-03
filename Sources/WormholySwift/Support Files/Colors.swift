@@ -51,6 +51,20 @@ internal struct Colors {
                 return Colors.WebSocket.Failed
             }
         }
+
+        internal struct Direction {
+            static let Sent = Color(hex: "#2E86AB")
+            static let Received = Color(hex: "#297E4C")
+
+            static func getDirectionColor(_ direction: WebSocketMessageDirection) -> Color {
+                switch direction {
+                case .sent:
+                    return Colors.WebSocket.Direction.Sent
+                case .received:
+                    return Colors.WebSocket.Direction.Received
+                }
+            }
+        }
     }
 }
 

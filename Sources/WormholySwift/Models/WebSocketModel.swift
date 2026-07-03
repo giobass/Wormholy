@@ -20,10 +20,7 @@ internal enum WebSocketMessageDirection: Equatable {
     }
 
     internal var color: Color {
-        switch self {
-        case .sent: return .blue
-        case .received: return .green
-        }
+        Colors.WebSocket.Direction.getDirectionColor(self)
     }
 }
 
