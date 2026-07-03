@@ -18,6 +18,7 @@
 		450871A6207E5C7700EE2D31 /* Routing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450871A2207E5C7700EE2D31 /* Routing.swift */; };
 		450871A7207E5C7700EE2D31 /* DataFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450871A3207E5C7700EE2D31 /* DataFetcher.swift */; };
 		455B5A0A2FBF400100A1B2C3 /* UIViewControllerExtensionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 455B5A082FBF400100A1B2C3 /* UIViewControllerExtensionTests.swift */; };
+		455B5A292FBF400100A1B2C3 /* CustomHTTPProtocolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 455B5A282FBF400100A1B2C3 /* CustomHTTPProtocolTests.swift */; };
 		453FADDB2E28FE1F001A198E /* Wormholy in Frameworks */ = {isa = PBXBuildFile; productRef = 453FADDA2E28FE1F001A198E /* Wormholy */; };
 		455B5A0B2FBF400100A1B2C3 /* Wormholy in Frameworks */ = {isa = PBXBuildFile; productRef = 453FADDA2E28FE1F001A198E /* Wormholy */; };
 /* End PBXBuildFile section */
@@ -46,6 +47,7 @@
 		450871A2207E5C7700EE2D31 /* Routing.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Routing.swift; sourceTree = "<group>"; };
 		450871A3207E5C7700EE2D31 /* DataFetcher.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DataFetcher.swift; sourceTree = "<group>"; };
 		455B5A082FBF400100A1B2C3 /* UIViewControllerExtensionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIViewControllerExtensionTests.swift; sourceTree = "<group>"; };
+		455B5A282FBF400100A1B2C3 /* CustomHTTPProtocolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomHTTPProtocolTests.swift; sourceTree = "<group>"; };
 		455B5A0C2FBF400100A1B2C3 /* WormholyDemoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WormholyDemoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -99,6 +101,7 @@
 			isa = PBXGroup;
 			children = (
 				455B5A082FBF400100A1B2C3 /* UIViewControllerExtensionTests.swift */,
+				455B5A282FBF400100A1B2C3 /* CustomHTTPProtocolTests.swift */,
 			);
 			path = Tests/WormholyTests;
 			sourceTree = SOURCE_ROOT;
@@ -241,6 +244,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				455B5A0A2FBF400100A1B2C3 /* UIViewControllerExtensionTests.swift in Sources */,
+				455B5A292FBF400100A1B2C3 /* CustomHTTPProtocolTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
