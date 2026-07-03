@@ -4,6 +4,7 @@ import XCTest
 final class WebSocketInterceptorTests: XCTestCase {
     override func tearDown() async throws {
         Wormholy.setWebSocketEnabled(false)
+        Wormholy.ignoredHosts = []
         await MainActor.run { Storage.shared.clearWebSocketConnections() }
         try await super.tearDown()
     }
@@ -57,5 +58,26 @@ final class WebSocketInterceptorTests: XCTestCase {
         let task = URLSession.shared.webSocketTask(with: url)
 
         XCTAssertNil(task.wormholyModel)
+    }
+
+    func testIgnoredHostDoesNotAttachModel() {
+        Wormholy.setWebSocketEnabled(true)
+        Wormholy.ignoredHosts = ["example.com"]
+
+        let url = URL(string: "wss://api.example.com/socket/\(UUID().uuidString)")!
+        let task = URLSession.shared.webSocketTask(with: url)
+
+        XCTAssertNil(task.wormholyModel)
+    }
+
+    func testNonIgnoredHostStillAttachesModel() async {
+        Wormholy.setWebSocketEnabled(true)
+        Wormholy.ignoredHosts = ["example.com"]
+
+        let url = URL(string: "wss://other.com/socket/\(UUID().uuidString)")!
+        let task = URLSession.shared.webSocketTask(with: url)
+        await waitForMainQueue()
+
+        XCTAssertNotNil(task.wormholyModel)
     }
 }
