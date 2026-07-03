@@ -106,10 +106,12 @@ internal struct RequestsView: View {
             trafficModeButtons
                 .padding(.vertical, 2)
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: showStatusFilter ? 2 : 8, trailing: 16))
+                .listRowBackground(Color.clear)
 
             if showStatusFilter {
                 StatusCodeFilterView(selectedStatusCodeRange: $selectedStatusCodeRange)
                     .listRowInsets(EdgeInsets(top: 2, leading: 8, bottom: 8, trailing: 8))
+                    .listRowBackground(Color.clear)
             }
         }
     }
