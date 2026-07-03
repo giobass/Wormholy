@@ -63,8 +63,6 @@ internal struct WebSocketDetailView: View {
         .listStyle(.insetGrouped)
         .navigationTitle(detailTitle)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.thinMaterial, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
