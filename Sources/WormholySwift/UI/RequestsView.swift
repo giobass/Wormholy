@@ -228,10 +228,6 @@ internal struct RequestsView: View {
         shareSheetPayload = ShareSheetPayload(content: .webSockets(connections))
     }
 
-    private func shareSingleRequest(_ option: RequestResponseExportOption, _ request: RequestModel) {
-        presentShareSheet(with: option, requests: [request])
-    }
-
     private func count(for mode: TrafficMode) -> Int {
         switch mode {
         case .requests:
