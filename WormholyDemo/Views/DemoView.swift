@@ -35,6 +35,7 @@ extension View {
                 Button("Open Inspector", systemImage: "ladybug") {
                     NotificationCenter.default.post(name: NSNotification.Name(rawValue: "wormholy_fire"), object: nil)
                 }
+                .tint(.accentColor)
             }
         }
     }

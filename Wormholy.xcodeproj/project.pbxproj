@@ -14,6 +14,7 @@
         455B5A302FC1000100A1B2C3 /* WormholyDemoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 455B5A2D2FC1000100A1B2C3 /* WormholyDemoApp.swift */; };
         455B5A312FC1000100A1B2C3 /* DemoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 455B5A2E2FC1000100A1B2C3 /* DemoView.swift */; };
         455B5A322FC1000100A1B2C3 /* WebSocketDemoViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 455B5A2F2FC1000100A1B2C3 /* WebSocketDemoViewModel.swift */; };
+        455B5A402FC1000300A1B2C3 /* DemoActionButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 455B5A3F2FC1000300A1B2C3 /* DemoActionButton.swift */; };
         455B5A3A2FC1000100A1B2C3 /* RequestsDemoViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 455B5A392FC1000100A1B2C3 /* RequestsDemoViewModel.swift */; };
         455B5A3C2FC1000100A1B2C3 /* RequestsDemoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 455B5A3B2FC1000100A1B2C3 /* RequestsDemoView.swift */; };
         455B5A3E2FC1000100A1B2C3 /* WebSocketDemoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 455B5A3D2FC1000100A1B2C3 /* WebSocketDemoView.swift */; };
@@ -48,6 +49,7 @@
         455B5A2D2FC1000100A1B2C3 /* WormholyDemoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WormholyDemoApp.swift; sourceTree = "<group>"; };
         455B5A2E2FC1000100A1B2C3 /* DemoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoView.swift; sourceTree = "<group>"; };
         455B5A2F2FC1000100A1B2C3 /* WebSocketDemoViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketDemoViewModel.swift; sourceTree = "<group>"; };
+        455B5A3F2FC1000300A1B2C3 /* DemoActionButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoActionButton.swift; sourceTree = "<group>"; };
         455B5A392FC1000100A1B2C3 /* RequestsDemoViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RequestsDemoViewModel.swift; sourceTree = "<group>"; };
         455B5A3B2FC1000100A1B2C3 /* RequestsDemoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RequestsDemoView.swift; sourceTree = "<group>"; };
         455B5A3D2FC1000100A1B2C3 /* WebSocketDemoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketDemoView.swift; sourceTree = "<group>"; };
@@ -116,6 +118,7 @@
         455B5A342FC1000100A1B2C3 /* Views */ = {
             isa = PBXGroup;
             children = (
+                455B5A3F2FC1000300A1B2C3 /* DemoActionButton.swift */,
                 455B5A2E2FC1000100A1B2C3 /* DemoView.swift */,
                 455B5A3B2FC1000100A1B2C3 /* RequestsDemoView.swift */,
                 455B5A3D2FC1000100A1B2C3 /* WebSocketDemoView.swift */,
@@ -285,6 +288,7 @@
             files = (
                 455B5A302FC1000100A1B2C3 /* WormholyDemoApp.swift in Sources */,
                 455B5A312FC1000100A1B2C3 /* DemoView.swift in Sources */,
+                455B5A402FC1000300A1B2C3 /* DemoActionButton.swift in Sources */,
                 455B5A3C2FC1000100A1B2C3 /* RequestsDemoView.swift in Sources */,
                 450871A7207E5C7700EE2D31 /* HTTPDemoClient.swift in Sources */,
                 455B5A272FBF400100A1B2C3 /* WebSocketEchoClient.swift in Sources */,

@@ -34,27 +34,32 @@ struct WebSocketDemoView: View {
                         .onSubmit {
                             viewModel.connect()
                         }
-                        .disabled(viewModel.isConnected)
+                        .disabled(viewModel.isConnected || viewModel.isConnecting)
 
                     Toggle("Test headers", isOn: $viewModel.includesTestHeaders)
                         .onChange(of: viewModel.includesTestHeaders) { _ in
                             viewModel.logTestHeadersState()
                         }
-                        .disabled(viewModel.isConnected)
+                        .disabled(viewModel.isConnected || viewModel.isConnecting)
 
                     if viewModel.isConnected {
-                        Button(role: .destructive) {
+                        DemoActionButton(
+                            "Disconnect",
+                            systemImage: "xmark.circle",
+                            tint: .red,
+                            role: .destructive
+                        ) {
                             focusedField = nil
                             viewModel.close()
-                        } label: {
-                            WebSocketActionLabel("Disconnect", systemImage: "xmark.circle", role: .destructive)
                         }
                     } else {
-                        Button {
+                        DemoActionButton(
+                            viewModel.isConnecting ? "Connecting" : "Connect",
+                            systemImage: "bolt.horizontal",
+                            isLoading: viewModel.isConnecting
+                        ) {
                             focusedField = nil
                             viewModel.connect()
-                        } label: {
-                            WebSocketActionLabel("Connect", systemImage: "bolt.horizontal")
                         }
                         .disabled(!viewModel.canConnect)
                     }
@@ -71,17 +76,13 @@ struct WebSocketDemoView: View {
                         }
                         .disabled(!viewModel.isConnected)
 
-                    Button {
+                    DemoActionButton("Send message", systemImage: "paperplane") {
                         sendMessage()
-                    } label: {
-                        WebSocketActionLabel("Send message", systemImage: "paperplane")
                     }
                     .disabled(!viewModel.canSendMessage)
 
-                    Button {
+                    DemoActionButton("Send sample JSON", systemImage: "curlybraces") {
                         viewModel.sendSampleJSON()
-                    } label: {
-                        WebSocketActionLabel("Send sample JSON", systemImage: "curlybraces")
                     }
                     .disabled(!viewModel.isConnected)
                 } footer: {
@@ -102,42 +103,6 @@ struct WebSocketDemoView: View {
     private func sendMessage() {
         focusedField = nil
         viewModel.sendMessage()
-    }
-}
-
-private struct WebSocketActionLabel: View {
-    // MARK: - Properties
-
-    @Environment(\.isEnabled) private var isEnabled
-
-    let title: String
-    let systemImage: String
-    let role: ButtonRole?
-
-    init(_ title: String, systemImage: String, role: ButtonRole? = nil) {
-        self.title = title
-        self.systemImage = systemImage
-        self.role = role
-    }
-
-    // MARK: - Body
-
-    var body: some View {
-        Label(title, systemImage: systemImage)
-            .foregroundStyle(foregroundStyle)
-            .opacity(isEnabled ? 1 : 0.55)
-    }
-
-    // MARK: - Style
-
-    private var foregroundStyle: Color {
-        if !isEnabled {
-            return .secondary
-        } else if role == .destructive {
-            return .red
-        } else {
-            return .accentColor
-        }
     }
 }
 

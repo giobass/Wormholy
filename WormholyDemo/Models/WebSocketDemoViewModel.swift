@@ -10,12 +10,18 @@ import Foundation
 
 @MainActor
 final class WebSocketDemoViewModel: ObservableObject {
+    enum ConnectionState {
+        case disconnected
+        case connecting
+        case connected
+    }
+
     // MARK: - Properties
 
     @Published var urlText = "wss://ws.postman-echo.com/raw"
     @Published var messageText = ""
     @Published var includesTestHeaders = true
-    @Published private(set) var isConnected = false
+    @Published private(set) var connectionState: ConnectionState = .disconnected
     @Published private(set) var logEntries: [String] = []
 
     private let client: WebSocketEchoClient
@@ -28,17 +34,27 @@ final class WebSocketDemoViewModel: ObservableObject {
 
     // MARK: - Status
 
+    var isConnecting: Bool {
+        connectionState == .connecting
+    }
+
+    var isConnected: Bool {
+        connectionState == .connected
+    }
+
     var canSendMessage: Bool {
         isConnected && !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     var canConnect: Bool {
-        !isConnected && hasValidURL
+        !isConnected && !isConnecting && hasValidURL
     }
 
     var connectionStatusText: String {
         if isConnected {
             return "Connected. Disconnect to change the URL or headers."
+        } else if isConnecting {
+            return "Connecting..."
         } else if !hasValidURL {
             return "Enter a valid WebSocket URL to connect."
         } else {
@@ -70,11 +86,14 @@ final class WebSocketDemoViewModel: ObservableObject {
     // MARK: - Connection Actions
 
     func connect() {
+        guard canConnect else { return }
+
         guard let url = URL(string: urlText) else {
             appendLog("Error: invalid WebSocket URL")
             return
         }
 
+        connectionState = .connecting
         appendLog("Opening: \(url.absoluteString)")
         logTestHeadersState()
         client.connect(to: url, includesTestHeaders: includesTestHeaders)
@@ -111,13 +130,22 @@ final class WebSocketDemoViewModel: ObservableObject {
     private func configureClientCallbacks() {
         client.onEvent = { [weak self] event in
             Task { @MainActor in
+                switch event {
+                case .connected:
+                    self?.connectionState = .connected
+                case .closed, .failed:
+                    self?.connectionState = .disconnected
+                case .sent, .received:
+                    break
+                }
+
                 self?.appendLog(event.text)
             }
         }
 
         client.onConnectionStateChanged = { [weak self] isConnected in
             Task { @MainActor in
-                self?.isConnected = isConnected
+                self?.connectionState = isConnected ? .connected : .disconnected
             }
         }
     }

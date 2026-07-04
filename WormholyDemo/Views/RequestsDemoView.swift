@@ -28,19 +28,19 @@ struct RequestsDemoView: View {
                             viewModel.logAutomaticHTTPState()
                         }
 
-                    Button("Get post", systemImage: "doc.text") {
+                    DemoActionButton("Get post", systemImage: "doc.text") {
                         viewModel.getPost()
                     }
 
-                    Button("New random post", systemImage: "plus.circle") {
+                    DemoActionButton("New random post", systemImage: "plus.circle") {
                         viewModel.newRandomPost()
                     }
 
-                    Button("Wrong URL", systemImage: "exclamationmark.triangle") {
+                    DemoActionButton("Wrong URL", systemImage: "exclamationmark.triangle") {
                         viewModel.getWrongURL()
                     }
 
-                    Button("Get photos", systemImage: "photo.on.rectangle") {
+                    DemoActionButton("Get photos", systemImage: "photo.on.rectangle") {
                         viewModel.getPhotos()
                     }
                 } footer: {
