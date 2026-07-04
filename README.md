@@ -147,18 +147,22 @@ task.resume()
 
 #### Demo App
 
-The `WormholyDemo` app includes a WebSocket console that connects to [Postman's public WebSocket echo service](https://blog.postman.com/introducing-postman-websocket-echo-service/) (`wss://ws.postman-echo.com/raw`, no signup required) to exercise this end-to-end.
+The `WormholyDemo` app is built with SwiftUI and includes separate tabs for HTTP requests and WebSocket traffic.
 
-From the demo app you can:
+The `HTTP Requests` tab lets you:
 
-- Open a WebSocket connection.
-- Close the active connection.
-- Open a new WebSocket, closing the active one.
-- Send custom text messages.
-- Send a sample JSON message to test pretty-printed body inspection.
-- Toggle test request headers.
-- Inspect the captured connection in Wormholy.
-- Share/export the captured WebSocket details.
+- Trigger sample HTTP requests manually.
+- Start or stop automatic HTTP traffic.
+- See whether automatic HTTP traffic is currently running or paused.
+
+The `WebSocket` tab lets you:
+
+- Open and close a WebSocket connection to [Postman's public WebSocket echo service](https://blog.postman.com/introducing-postman-websocket-echo-service/) (`wss://ws.postman-echo.com/raw`, no signup required).
+- Send custom text messages and sample JSON WebSocket messages.
+- Toggle test WebSocket request headers before connecting.
+- Read the WebSocket console log while interacting with the connection.
+
+Both tabs include the Wormholy inspector button in the toolbar, so you can inspect and share/export captured HTTP requests and WebSocket details.
 
 ### Notes on Ignored Hosts
 
