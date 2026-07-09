@@ -84,7 +84,7 @@ static NSURLSession *Wormholy_sessionWithConfigurationDelegateQueue(id self,
     id effectiveDelegate = delegate;
     WHWebSocketSessionDelegateProxy *proxy = nil;
 
-    if ([WHWebSocketRecorder isEnabled] && delegate && ![delegate isKindOfClass:[WHWebSocketSessionDelegateProxy class]]) {
+    if (delegate && ![delegate isKindOfClass:[WHWebSocketSessionDelegateProxy class]]) {
         proxy = [[WHWebSocketSessionDelegateProxy alloc] initWithDelegate:delegate];
         effectiveDelegate = proxy;
     }

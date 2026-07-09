@@ -110,6 +110,9 @@ public class Wormholy: NSObject
     /// Independent from `setEnabled`, since WebSocket swizzling intercepts every
     /// `send`/`receive` call and some apps may want to opt out of that overhead
     /// even while HTTP tracking stays on.
+    ///
+    /// Delegate-backed sessions are proxied when they are created so open/close
+    /// events can be recorded whenever WebSocket tracking is enabled.
     @objc public static func setWebSocketEnabled(_ enable: Bool) {
         if enable {
             WebSocketInterceptor.install()

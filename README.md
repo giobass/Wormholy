@@ -111,6 +111,8 @@ Wormholy.setWebSocketEnabled(true)
 
 Once enabled, use the "Requests" / "WebSockets" segmented control at the top of the Wormholy screen to switch views and inspect captured WebSocket connections.
 
+Delegate-backed `URLSession` instances are proxied when they are created, while `Wormholy.setWebSocketEnabled(_:)` controls whether WebSocket events and messages are recorded.
+
 Wormholy can capture:
 
 - Connection URL.
