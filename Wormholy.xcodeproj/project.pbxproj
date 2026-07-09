@@ -23,7 +23,6 @@
 		455B5A212FBF400100A1B2C3 /* WebSocketModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 455B5A202FBF400100A1B2C3 /* WebSocketModelTests.swift */; };
 		455B5A232FBF400100A1B2C3 /* StorageWebSocketTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 455B5A222FBF400100A1B2C3 /* StorageWebSocketTests.swift */; };
 		455B5A252FBF400100A1B2C3 /* WebSocketInterceptorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 455B5A242FBF400100A1B2C3 /* WebSocketInterceptorTests.swift */; };
-		455B5A2B2FBF400100A1B2C3 /* XCTestCase+WaitForMainQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 455B5A2A2FBF400100A1B2C3 /* XCTestCase+WaitForMainQueue.swift */; };
 		453FADDB2E28FE1F001A198E /* Wormholy in Frameworks */ = {isa = PBXBuildFile; productRef = 453FADDA2E28FE1F001A198E /* Wormholy */; };
 		455B5A0B2FBF400100A1B2C3 /* Wormholy in Frameworks */ = {isa = PBXBuildFile; productRef = 453FADDA2E28FE1F001A198E /* Wormholy */; };
 /* End PBXBuildFile section */
@@ -57,7 +56,6 @@
 		455B5A202FBF400100A1B2C3 /* WebSocketModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketModelTests.swift; sourceTree = "<group>"; };
 		455B5A222FBF400100A1B2C3 /* StorageWebSocketTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageWebSocketTests.swift; sourceTree = "<group>"; };
 		455B5A242FBF400100A1B2C3 /* WebSocketInterceptorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketInterceptorTests.swift; sourceTree = "<group>"; };
-		455B5A2A2FBF400100A1B2C3 /* XCTestCase+WaitForMainQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "XCTestCase+WaitForMainQueue.swift"; sourceTree = "<group>"; };
 		455B5A0C2FBF400100A1B2C3 /* WormholyDemoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WormholyDemoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -116,7 +114,6 @@
 				455B5A202FBF400100A1B2C3 /* WebSocketModelTests.swift */,
 				455B5A222FBF400100A1B2C3 /* StorageWebSocketTests.swift */,
 				455B5A242FBF400100A1B2C3 /* WebSocketInterceptorTests.swift */,
-				455B5A2A2FBF400100A1B2C3 /* XCTestCase+WaitForMainQueue.swift */,
 			);
 			path = Tests/WormholyTests;
 			sourceTree = SOURCE_ROOT;
@@ -264,7 +261,6 @@
 				455B5A212FBF400100A1B2C3 /* WebSocketModelTests.swift in Sources */,
 				455B5A232FBF400100A1B2C3 /* StorageWebSocketTests.swift in Sources */,
 				455B5A252FBF400100A1B2C3 /* WebSocketInterceptorTests.swift in Sources */,
-				455B5A2B2FBF400100A1B2C3 /* XCTestCase+WaitForMainQueue.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -1,11 +1,12 @@
 import XCTest
 @testable import WormholySwift
 
+@MainActor
 final class WebSocketInterceptorTests: XCTestCase {
     override func tearDown() async throws {
         Wormholy.setWebSocketEnabled(false)
         Wormholy.ignoredHosts = []
-        await MainActor.run { Storage.shared.clearWebSocketConnections() }
+        Storage.shared.clearWebSocketConnections()
         try await super.tearDown()
     }
 
@@ -20,17 +21,15 @@ final class WebSocketInterceptorTests: XCTestCase {
 
         let url = URL(string: "wss://example.com/socket/\(UUID().uuidString)")!
         let task = URLSession.shared.webSocketTask(with: url)
-        await waitForMainQueue()
 
         XCTAssertEqual(task.wormholyModel?.url, url.absoluteString)
         XCTAssertEqual(task.wormholyModel?.host, url.host)
 
-        await MainActor.run {
-            XCTAssertTrue(Storage.shared.webSocketConnections.contains { $0.id == task.wormholyModel?.id })
-        }
+        await Task.yield()
+        XCTAssertTrue(Storage.shared.webSocketConnections.contains { $0.id == task.wormholyModel?.id })
     }
 
-    func testFactoryRequestOverloadCapturesHeaders() async {
+    func testFactoryRequestOverloadCapturesHeaders() {
         Wormholy.setWebSocketEnabled(true)
 
         var request = URLRequest(url: URL(string: "wss://example.com/socket/\(UUID().uuidString)")!)
@@ -41,12 +40,11 @@ final class WebSocketInterceptorTests: XCTestCase {
         XCTAssertEqual(task.wormholyModel?.requestHeaders["Authorization"], "Bearer token")
     }
 
-    func testFactoryProtocolsOverloadCapturesRequestedProtocols() async {
+    func testFactoryProtocolsOverloadCapturesRequestedProtocols() {
         Wormholy.setWebSocketEnabled(true)
 
         let url = URL(string: "wss://example.com/socket/\(UUID().uuidString)")!
         let task = URLSession.shared.webSocketTask(with: url, protocols: ["chat", "superchat"])
-        await waitForMainQueue()
 
         XCTAssertEqual(task.wormholyModel?.requestedProtocols, ["chat", "superchat"])
     }
@@ -70,13 +68,12 @@ final class WebSocketInterceptorTests: XCTestCase {
         XCTAssertNil(task.wormholyModel)
     }
 
-    func testNonIgnoredHostStillAttachesModel() async {
+    func testNonIgnoredHostStillAttachesModel() {
         Wormholy.setWebSocketEnabled(true)
         Wormholy.ignoredHosts = ["example.com"]
 
         let url = URL(string: "wss://other.com/socket/\(UUID().uuidString)")!
         let task = URLSession.shared.webSocketTask(with: url)
-        await waitForMainQueue()
 
         XCTAssertNotNil(task.wormholyModel)
     }
