@@ -3,6 +3,12 @@ import XCTest
 
 final class WebSocketModelTests: XCTestCase {
     @MainActor
+    override func tearDown() async throws {
+        Storage.webSocketMessageLimit = nil
+        try await super.tearDown()
+    }
+
+    @MainActor
     func testInitialStateIsConnecting() {
         let model = WebSocketModel(url: "wss://example.com/socket")
         XCTAssertEqual(model.state, .connecting)
@@ -41,6 +47,32 @@ final class WebSocketModelTests: XCTestCase {
         XCTAssertEqual(model.messages.count, 2)
         XCTAssertEqual(model.messages.last?.direction, .received)
         XCTAssertEqual(model.messages.last?.text, "world")
+    }
+
+    @MainActor
+    func testAddMessageRespectsWebSocketMessageLimit() async {
+        Storage.webSocketMessageLimit = 2
+        let model = WebSocketModel(url: "wss://example.com/socket")
+
+        model.addMessage(direction: .sent, message: .string("first"))
+        model.addMessage(direction: .received, message: .string("second"))
+        model.addMessage(direction: .sent, message: .string("third"))
+        await waitForMainQueue()
+
+        XCTAssertEqual(model.messages.map(\.text), ["second", "third"])
+    }
+
+    @MainActor
+    func testNilWebSocketMessageLimitKeepsCompleteHistory() async {
+        Storage.webSocketMessageLimit = nil
+        let model = WebSocketModel(url: "wss://example.com/socket")
+
+        for index in 0..<3 {
+            model.addMessage(direction: .sent, message: .string("\(index)"))
+        }
+        await waitForMainQueue()
+
+        XCTAssertEqual(model.messages.map(\.text), ["0", "1", "2"])
     }
 
     @MainActor

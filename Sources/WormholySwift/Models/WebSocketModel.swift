@@ -151,6 +151,9 @@ internal class WebSocketModel: Identifiable, ObservableObject, Equatable {
     internal func addMessage(direction: WebSocketMessageDirection, message: URLSessionWebSocketTask.Message) {
         DispatchQueue.main.async {
             self.messages.append(WebSocketMessage(direction: direction, timestamp: Date(), message: message))
+            if let limit = Storage.webSocketMessageLimit?.intValue, limit >= 0, self.messages.count > limit {
+                self.messages.removeFirst(self.messages.count - limit)
+            }
         }
     }
 

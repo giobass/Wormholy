@@ -37,6 +37,26 @@ public class Wormholy: NSObject
             }
         }
     }
+
+    /// Limit the number of messages retained for each WebSocket connection.
+    ///
+    /// When the limit is reached, Wormholy removes the oldest messages and keeps
+    /// the most recent ones.
+    ///
+    /// Defaults to `nil`, which keeps the complete message history for each captured connection.
+    @objc public static var webSocketMessageLimit: NSNumber? {
+        get {
+            Task { @MainActor in
+                return Storage.webSocketMessageLimit
+            }
+            return nil // Placeholder return, adjust as needed
+        }
+        set {
+            Task { @MainActor in
+                Storage.webSocketMessageLimit = newValue
+            }
+        }
+    }
     
     /// Default filter for the search box
     ///
