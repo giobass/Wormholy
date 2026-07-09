@@ -1,11 +1,5 @@
-//
-//  WebSocketEchoClient.swift
-//  Wormholy-Demo-iOS
-//
-//  Created by Giovanni Bassolino on 03/07/26.
-//  Copyright © 2018 Wormholy. All rights reserved.
-//
-
+// Copyright (c) 2026 Wormholy contributors
+// SPDX-License-Identifier: MIT
 import Foundation
 
 final class WebSocketEchoClient: NSObject {

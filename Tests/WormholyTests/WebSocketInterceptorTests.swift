@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Wormholy contributors
+// SPDX-License-Identifier: MIT
+
 import XCTest
 @testable import WormholySwift
 
