@@ -23,7 +23,7 @@ public class Wormholy: NSObject
     
     /// Limit the logging count.
     ///
-    /// This limit is shared between HTTP requests and WebSocket connections - it is not tracked separately per feature.
+    /// The configured value is applied separately to HTTP requests and WebSocket connections.
     @objc public static var limit: NSNumber? {
         get {
             Task { @MainActor in
