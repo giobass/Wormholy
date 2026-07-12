@@ -1,10 +1,5 @@
-//
-//  HTTPDemoClient.swift
-//  Wormholy-Demo-iOS
-//
-//  Created by Paolo Musolino on 18/01/18.
-//  Copyright © 2018 Wormholy. All rights reserved.
-//
+// Copyright (c) 2026 Wormholy contributors
+// SPDX-License-Identifier: MIT
 
 import Foundation
 

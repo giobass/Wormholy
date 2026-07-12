@@ -1,10 +1,5 @@
-//
-//  AppDelegate.swift
-//  WormholyDemo
-//
-//  Created by Paolo Musolino on 11/04/18.
-//  Copyright © 2018 Wormholy. All rights reserved.
-//
+// Copyright (c) 2026 Wormholy contributors
+// SPDX-License-Identifier: MIT
 
 import UIKit
 import WormholySwift
