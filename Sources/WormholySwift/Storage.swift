@@ -12,13 +12,13 @@ import Foundation
 internal class Storage: NSObject, ObservableObject {
 
     internal static let shared: Storage = Storage()
-  
+
     internal static var limit: NSNumber? = nil
 
     internal static var webSocketMessageLimit: NSNumber? = nil
 
     internal static var defaultFilter: String? = nil
-    
+
     // The requests array is published to notify SwiftUI views of changes.
     @Published internal private(set) var requests: [RequestModel] = []
 
