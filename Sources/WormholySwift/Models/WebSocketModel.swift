@@ -1,10 +1,5 @@
-//
-//  WebSocketModel.swift
-//  Wormholy
-//
-//  Created by Giovanni Bassolino on 03/07/26.
-//  Copyright © 2018 Wormholy. All rights reserved.
-//
+// Copyright (c) 2026 Wormholy contributors
+// SPDX-License-Identifier: MIT
 import Foundation
 import SwiftUI
 
@@ -120,62 +115,58 @@ internal class WebSocketModel: Identifiable, ObservableObject, Equatable {
     /// swizzled, the same task can get attached more than once; this refines the already
     /// -attached model instead of creating a second, orphaned one.
     internal func refineConnectionMetadataIfNeeded(url candidate: URL, headers: [String: String], protocols: [String]) {
-        DispatchQueue.main.async {
-            let candidateIsWebSocketScheme = ["ws", "wss"].contains(candidate.scheme?.lowercased() ?? "")
-            let currentIsWebSocketScheme = ["ws", "wss"].contains(self.scheme?.lowercased() ?? "")
-            if candidateIsWebSocketScheme && !currentIsWebSocketScheme {
-                self.url = candidate.absoluteString
-                self.host = candidate.host
-                self.scheme = candidate.scheme
-            }
-            if self.requestHeaders.isEmpty && !headers.isEmpty {
-                self.requestHeaders = headers
-            }
-            if self.requestedProtocols.isEmpty && !protocols.isEmpty {
-                self.requestedProtocols = protocols
-            }
+        let candidateIsWebSocketScheme = ["ws", "wss"].contains(candidate.scheme?.lowercased() ?? "")
+        let currentIsWebSocketScheme = ["ws", "wss"].contains(self.scheme?.lowercased() ?? "")
+        if candidateIsWebSocketScheme && !currentIsWebSocketScheme {
+            self.url = candidate.absoluteString
+            self.host = candidate.host
+            self.scheme = candidate.scheme
+        }
+        if self.requestHeaders.isEmpty && !headers.isEmpty {
+            self.requestHeaders = headers
+        }
+        if self.requestedProtocols.isEmpty && !protocols.isEmpty {
+            self.requestedProtocols = protocols
         }
     }
 
+    @MainActor
     internal func markOpened(protocol negotiatedProtocol: String? = nil) {
-        DispatchQueue.main.async {
-            if self.openedAt == nil {
-                self.openedAt = Date()
-            }
-            if let negotiatedProtocol = negotiatedProtocol {
-                self.negotiatedProtocol = negotiatedProtocol
-            }
+        if self.openedAt == nil {
+            self.openedAt = Date()
+        }
+        if let negotiatedProtocol = negotiatedProtocol {
+            self.negotiatedProtocol = negotiatedProtocol
         }
     }
 
+    @MainActor
     internal func addMessage(direction: WebSocketMessageDirection, message: URLSessionWebSocketTask.Message) {
-        DispatchQueue.main.async {
-            self.messages.append(WebSocketMessage(direction: direction, timestamp: Date(), message: message))
+        self.messages.append(WebSocketMessage(direction: direction, timestamp: Date(), message: message))
+        if let limit = Storage.webSocketMessageLimit?.intValue, limit >= 0, self.messages.count > limit {
+            self.messages.removeFirst(self.messages.count - limit)
         }
     }
 
+    @MainActor
     internal func updateResponseHeaders(_ headers: [String: String]) {
-        DispatchQueue.main.async {
-            guard !headers.isEmpty else { return }
-            self.responseHeaders = headers
-        }
+        guard !headers.isEmpty else { return }
+        self.responseHeaders = headers
     }
 
+    @MainActor
     internal func markClosed(code: URLSessionWebSocketTask.CloseCode, reason: Data?) {
-        DispatchQueue.main.async {
-            self.closedAt = Date()
-            self.closeCode = code
-            if let reason = reason {
-                self.closeReason = String(data: reason, encoding: .utf8)
-            }
+        self.closedAt = Date()
+        self.closeCode = code
+        if let reason = reason {
+            self.closeReason = String(data: reason, encoding: .utf8)
         }
     }
 
+    @MainActor
     internal func markError(_ error: Error) {
-        DispatchQueue.main.async {
-            guard self.closedAt == nil else { return }
-            self.errorDescription = error.localizedDescription
-        }
+        guard self.closedAt == nil else { return }
+        self.errorDescription = error.localizedDescription
     }
 
     internal static func == (lhs: WebSocketModel, rhs: WebSocketModel) -> Bool {

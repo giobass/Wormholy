@@ -1,9 +1,5 @@
-//
-//  URLSessionWebSocketTask+Wormholy.m
-//  Wormholy-SDK
-//
-//  Created by Giovanni Bassolino on 03/07/26.
-//  Copyright © 2018 Wormholy. All rights reserved.
+// Copyright (c) 2026 Wormholy contributors
+// SPDX-License-Identifier: MIT
 //
 //  Swizzles NSURLSessionWebSocketTask's send/receive methods directly in Objective-C.
 //  Their message payload (`NSURLSessionWebSocketMessage *`) isn't representable in Swift's

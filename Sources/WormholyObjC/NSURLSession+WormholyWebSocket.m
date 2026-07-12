@@ -1,10 +1,5 @@
-//
-//  NSURLSession+WormholyWebSocket.m
-//  Wormholy-SDK
-//
-//  Created by Giovanni Bassolino on 03/07/26.
-//  Copyright © 2018 Wormholy. All rights reserved.
-//
+// Copyright (c) 2026 Wormholy contributors
+// SPDX-License-Identifier: MIT
 
 #import "WormholyMethodSwizzling.h"
 #import <objc/runtime.h>
@@ -84,7 +79,7 @@ static NSURLSession *Wormholy_sessionWithConfigurationDelegateQueue(id self,
     id effectiveDelegate = delegate;
     WHWebSocketSessionDelegateProxy *proxy = nil;
 
-    if ([WHWebSocketRecorder isEnabled] && delegate && ![delegate isKindOfClass:[WHWebSocketSessionDelegateProxy class]]) {
+    if (delegate && ![delegate isKindOfClass:[WHWebSocketSessionDelegateProxy class]]) {
         proxy = [[WHWebSocketSessionDelegateProxy alloc] initWithDelegate:delegate];
         effectiveDelegate = proxy;
     }

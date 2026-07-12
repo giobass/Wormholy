@@ -1,9 +1,5 @@
-//
-//  TrafficModeButton.swift
-//  Wormholy
-//
-//  Created by Giovanni Bassolino on 03/07/26.
-//
+// Copyright (c) 2026 Wormholy contributors
+// SPDX-License-Identifier: MIT
 
 import SwiftUI
 

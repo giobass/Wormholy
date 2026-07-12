@@ -1,10 +1,5 @@
-//
-//  WebSocketInterceptor.swift
-//  Wormholy
-//
-//  Created by Giovanni Bassolino on 03/07/26.
-//  Copyright © 2018 Wormholy. All rights reserved.
-//
+// Copyright (c) 2026 Wormholy contributors
+// SPDX-License-Identifier: MIT
 import Foundation
 import ObjectiveC
 
@@ -71,7 +66,6 @@ internal enum WebSocketInterceptor {
                                     requestHeaders: headers,
                                     requestedProtocols: protocols)
         task.wormholyModel = model
-
         Task { @MainActor in
             Storage.shared.saveWebSocketConnection(model)
         }
@@ -153,7 +147,9 @@ extension URLSessionWebSocketTask {
 
     @objc dynamic func wormholy_cancel(with closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {
         if WebSocketInterceptor.isEnabled {
-            wormholyModel?.markClosed(code: closeCode, reason: reason)
+            Task { @MainActor in
+                wormholyModel?.markClosed(code: closeCode, reason: reason)
+            }
         }
         wormholy_cancel(with: closeCode, reason: reason)
     }
@@ -168,43 +164,57 @@ public final class WHWebSocketRecorder: NSObject {
     @objc public static var isEnabled: Bool { WebSocketInterceptor.isEnabled }
 
     @objc public static func recordSentText(_ task: URLSessionWebSocketTask, text: String) {
-        task.wormholyModel?.addMessage(direction: .sent, message: .string(text))
+        Task { @MainActor in
+            task.wormholyModel?.addMessage(direction: .sent, message: .string(text))
+        }
     }
 
     @objc public static func recordSentData(_ task: URLSessionWebSocketTask, data: Data) {
-        task.wormholyModel?.addMessage(direction: .sent, message: .data(data))
+        Task { @MainActor in
+            task.wormholyModel?.addMessage(direction: .sent, message: .data(data))
+        }
     }
 
     @objc public static func recordReceivedText(_ task: URLSessionWebSocketTask, text: String) {
-        task.wormholyModel?.addMessage(direction: .received, message: .string(text))
+        Task { @MainActor in
+            task.wormholyModel?.addMessage(direction: .received, message: .string(text))
+        }
     }
 
     @objc public static func recordReceivedData(_ task: URLSessionWebSocketTask, data: Data) {
-        task.wormholyModel?.addMessage(direction: .received, message: .data(data))
+        Task { @MainActor in
+            task.wormholyModel?.addMessage(direction: .received, message: .data(data))
+        }
     }
 
     @objc public static func recordOpened(_ task: URLSessionWebSocketTask, protocol negotiatedProtocol: String?) {
-        task.wormholyModel?.markOpened(protocol: negotiatedProtocol)
+        Task { @MainActor in
+            task.wormholyModel?.markOpened(protocol: negotiatedProtocol)
 
-        // Foundation populates the task's `response` with the HTTP handshake's 101
-        // Switching Protocols response (headers included) once the socket opens.
-        if let httpResponse = task.response as? HTTPURLResponse {
-            let headers = httpResponse.allHeaderFields.reduce(into: [String: String]()) { result, entry in
-                if let key = entry.key as? String, let value = entry.value as? String {
-                    result[key] = value
+            // Foundation populates the task's `response` with the HTTP handshake's 101
+            // Switching Protocols response (headers included) once the socket opens.
+            if let httpResponse = task.response as? HTTPURLResponse {
+                let headers = httpResponse.allHeaderFields.reduce(into: [String: String]()) { result, entry in
+                    if let key = entry.key as? String, let value = entry.value as? String {
+                        result[key] = value
+                    }
                 }
+                task.wormholyModel?.updateResponseHeaders(headers)
             }
-            task.wormholyModel?.updateResponseHeaders(headers)
         }
     }
 
     @objc public static func recordClosed(_ task: URLSessionWebSocketTask,
                                           closeCode: URLSessionWebSocketTask.CloseCode,
                                           reason: Data?) {
-        task.wormholyModel?.markClosed(code: closeCode, reason: reason)
+        Task { @MainActor in
+            task.wormholyModel?.markClosed(code: closeCode, reason: reason)
+        }
     }
 
     @objc public static func recordError(_ task: URLSessionWebSocketTask, error: Error) {
-        task.wormholyModel?.markError(error)
+        Task { @MainActor in
+            task.wormholyModel?.markError(error)
+        }
     }
 }

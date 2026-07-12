@@ -23,7 +23,7 @@ public class Wormholy: NSObject
     
     /// Limit the logging count.
     ///
-    /// This limit is shared between HTTP requests and WebSocket connections - it is not tracked separately per feature.
+    /// The configured value is applied separately to HTTP requests and WebSocket connections.
     @objc public static var limit: NSNumber? {
         get {
             Task { @MainActor in
@@ -34,6 +34,26 @@ public class Wormholy: NSObject
         set {
             Task { @MainActor in
                 Storage.limit = newValue
+            }
+        }
+    }
+
+    /// Limit the number of messages retained for each WebSocket connection.
+    ///
+    /// When the limit is reached, Wormholy removes the oldest messages and keeps
+    /// the most recent ones.
+    ///
+    /// Defaults to `nil`, which keeps the complete message history for each captured connection.
+    @objc public static var webSocketMessageLimit: NSNumber? {
+        get {
+            Task { @MainActor in
+                return Storage.webSocketMessageLimit
+            }
+            return nil // Placeholder return, adjust as needed
+        }
+        set {
+            Task { @MainActor in
+                Storage.webSocketMessageLimit = newValue
             }
         }
     }
@@ -110,6 +130,9 @@ public class Wormholy: NSObject
     /// Independent from `setEnabled`, since WebSocket swizzling intercepts every
     /// `send`/`receive` call and some apps may want to opt out of that overhead
     /// even while HTTP tracking stays on.
+    ///
+    /// Delegate-backed sessions are proxied when they are created so open/close
+    /// events can be recorded whenever WebSocket tracking is enabled.
     @objc public static func setWebSocketEnabled(_ enable: Bool) {
         if enable {
             WebSocketInterceptor.install()
