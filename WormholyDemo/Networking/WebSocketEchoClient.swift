@@ -57,7 +57,7 @@ final class WebSocketEchoClient: NSObject {
         self.task = task
 
         task.resume()
-        listen()
+        listen(on: task)
     }
 
     func send(_ message: String) {
@@ -85,9 +85,9 @@ final class WebSocketEchoClient: NSObject {
         isConnected = false
     }
 
-    private func listen() {
-        task?.receive { [weak self] result in
-            guard let self else { return }
+    private func listen(on task: URLSessionWebSocketTask) {
+        task.receive { [weak self, weak task] result in
+            guard let self, let task, self.task === task else { return }
 
             switch result {
             case .success(let message):
@@ -99,7 +99,7 @@ final class WebSocketEchoClient: NSObject {
                 @unknown default:
                     break
                 }
-                self.listen()
+                self.listen(on: task)
             case .failure(let error):
                 self.emit(.failed(error.localizedDescription))
                 self.isConnected = false
