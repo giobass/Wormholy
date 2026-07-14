@@ -2,13 +2,16 @@
 // SPDX-License-Identifier: MIT
 
 import XCTest
+import Combine
 @testable import WormholySwift
 
 @MainActor
 final class WebSocketInterceptorTests: XCTestCase {
     private final class SessionDelegate: NSObject, URLSessionDelegate {}
+    private var cancellables = Set<AnyCancellable>()
 
     override func tearDown() async throws {
+        cancellables.removeAll()
         Wormholy.setWebSocketEnabled(false)
         Wormholy.ignoredHosts = []
         Storage.shared.clearWebSocketConnections()
@@ -61,6 +64,28 @@ final class WebSocketInterceptorTests: XCTestCase {
         }
 
         await fulfillment(of: [modelPublished], timeout: 1)
+    }
+
+    func testRecorderKeepsLatestPendingMessagesWithinLimit() async throws {
+        Wormholy.setWebSocketEnabled(true)
+        Wormholy.webSocketMessageLimit = 2
+        let task = URLSession.shared.webSocketTask(with: URL(string: "wss://example.com/socket/\(UUID().uuidString)")!)
+        let model = try XCTUnwrap(task.wormholyModel)
+        let messagesRecorded = expectation(description: "latest messages recorded")
+
+        model.$messages
+            .dropFirst()
+            .filter { $0.map(\.text) == ["second", "third"] }
+            .prefix(1)
+            .sink { _ in messagesRecorded.fulfill() }
+            .store(in: &cancellables)
+
+        WHWebSocketRecorder.recordSentText(task, text: "first")
+        WHWebSocketRecorder.recordReceivedText(task, text: "second")
+        WHWebSocketRecorder.recordSentText(task, text: "third")
+
+        await fulfillment(of: [messagesRecorded], timeout: 1)
+        XCTAssertEqual(model.messages.map(\.text), ["second", "third"])
     }
 
     func testConcurrentFactoryCallsAttachModels() {

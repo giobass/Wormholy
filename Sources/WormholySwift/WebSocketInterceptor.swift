@@ -197,11 +197,104 @@ extension URLSessionWebSocketTask {
 
     @objc dynamic func wormholy_cancel(with closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {
         if WebSocketInterceptor.isEnabled {
-            Task { @MainActor in
-                wormholyModel?.markClosed(code: closeCode, reason: reason)
-            }
+            WHWebSocketRecorder.recordClosed(self, closeCode: closeCode, reason: reason)
         }
         wormholy_cancel(with: closeCode, reason: reason)
+    }
+}
+
+private final class WebSocketEventRecorder {
+    fileprivate enum Event {
+        case message(URLSessionWebSocketTask, WebSocketMessageDirection, URLSessionWebSocketTask.Message)
+        case opened(URLSessionWebSocketTask, String?)
+        case closed(URLSessionWebSocketTask, URLSessionWebSocketTask.CloseCode, Data?)
+        case error(URLSessionWebSocketTask, Error)
+
+        var task: URLSessionWebSocketTask {
+            switch self {
+            case let .message(task, _, _), let .opened(task, _), let .closed(task, _, _), let .error(task, _):
+                return task
+            }
+        }
+
+        var isMessage: Bool {
+            if case .message = self { return true }
+            return false
+        }
+
+        @MainActor
+        func apply() {
+            switch self {
+            case let .message(task, direction, message):
+                task.wormholyModel?.addMessage(direction: direction, message: message)
+            case let .opened(task, negotiatedProtocol):
+                task.wormholyModel?.markOpened(protocol: negotiatedProtocol)
+
+                if let httpResponse = task.response as? HTTPURLResponse {
+                    let headers = httpResponse.allHeaderFields.reduce(into: [String: String]()) { result, entry in
+                        if let key = entry.key as? String, let value = entry.value as? String {
+                            result[key] = value
+                        }
+                    }
+                    task.wormholyModel?.updateResponseHeaders(headers)
+                }
+            case let .closed(task, closeCode, reason):
+                task.wormholyModel?.markClosed(code: closeCode, reason: reason)
+            case let .error(task, error):
+                task.wormholyModel?.markError(error)
+            }
+        }
+    }
+
+    private let queue = DispatchQueue(label: "com.wormholy.websocket-recorder")
+    private var pendingEvents: [Event] = []
+    private var flushScheduled = false
+
+    func record(_ event: Event) {
+        queue.async { [weak self] in
+            guard let self else { return }
+            self.append(event)
+
+            guard !self.flushScheduled else { return }
+            self.flushScheduled = true
+            DispatchQueue.main.async { [weak self] in
+                self?.flushOnMainActor()
+            }
+        }
+    }
+
+    private func append(_ event: Event) {
+        pendingEvents.append(event)
+        guard event.isMessage,
+              let limit = WebSocketConfiguration.messageLimit?.intValue,
+              limit >= 0 else {
+            return
+        }
+
+        let taskID = ObjectIdentifier(event.task)
+        while pendingEvents.indices.filter({ index in
+            pendingEvents[index].isMessage && ObjectIdentifier(pendingEvents[index].task) == taskID
+        }).count > limit {
+            guard let oldestMessageIndex = pendingEvents.firstIndex(where: { pendingEvent in
+                pendingEvent.isMessage && ObjectIdentifier(pendingEvent.task) == taskID
+            }) else {
+                return
+            }
+            pendingEvents.remove(at: oldestMessageIndex)
+        }
+    }
+
+    private func flushOnMainActor() {
+        let events = queue.sync {
+            let events = pendingEvents
+            pendingEvents.removeAll(keepingCapacity: true)
+            flushScheduled = false
+            return events
+        }
+
+        MainActor.assumeIsolated {
+            events.forEach { $0.apply() }
+        }
     }
 }
 
@@ -211,60 +304,42 @@ extension URLSessionWebSocketTask {
 /// `URLSessionWebSocketTask.Message` isn't representable in `@objc`.
 @objc(WHWebSocketRecorder)
 public final class WHWebSocketRecorder: NSObject {
+    private static let eventRecorder = WebSocketEventRecorder()
+
     @objc public static var isEnabled: Bool { WebSocketInterceptor.isEnabled }
 
     @objc public static func recordSentText(_ task: URLSessionWebSocketTask, text: String) {
-        Task { @MainActor in
-            task.wormholyModel?.addMessage(direction: .sent, message: .string(text))
-        }
+        record(.message(task, .sent, .string(text)))
     }
 
     @objc public static func recordSentData(_ task: URLSessionWebSocketTask, data: Data) {
-        Task { @MainActor in
-            task.wormholyModel?.addMessage(direction: .sent, message: .data(data))
-        }
+        record(.message(task, .sent, .data(data)))
     }
 
     @objc public static func recordReceivedText(_ task: URLSessionWebSocketTask, text: String) {
-        Task { @MainActor in
-            task.wormholyModel?.addMessage(direction: .received, message: .string(text))
-        }
+        record(.message(task, .received, .string(text)))
     }
 
     @objc public static func recordReceivedData(_ task: URLSessionWebSocketTask, data: Data) {
-        Task { @MainActor in
-            task.wormholyModel?.addMessage(direction: .received, message: .data(data))
-        }
+        record(.message(task, .received, .data(data)))
     }
 
     @objc public static func recordOpened(_ task: URLSessionWebSocketTask, protocol negotiatedProtocol: String?) {
-        Task { @MainActor in
-            task.wormholyModel?.markOpened(protocol: negotiatedProtocol)
-
-            // Foundation populates the task's `response` with the HTTP handshake's 101
-            // Switching Protocols response (headers included) once the socket opens.
-            if let httpResponse = task.response as? HTTPURLResponse {
-                let headers = httpResponse.allHeaderFields.reduce(into: [String: String]()) { result, entry in
-                    if let key = entry.key as? String, let value = entry.value as? String {
-                        result[key] = value
-                    }
-                }
-                task.wormholyModel?.updateResponseHeaders(headers)
-            }
-        }
+        record(.opened(task, negotiatedProtocol))
     }
 
     @objc public static func recordClosed(_ task: URLSessionWebSocketTask,
                                           closeCode: URLSessionWebSocketTask.CloseCode,
                                           reason: Data?) {
-        Task { @MainActor in
-            task.wormholyModel?.markClosed(code: closeCode, reason: reason)
-        }
+        record(.closed(task, closeCode, reason))
     }
 
     @objc public static func recordError(_ task: URLSessionWebSocketTask, error: Error) {
-        Task { @MainActor in
-            task.wormholyModel?.markError(error)
-        }
+        record(.error(task, error))
+    }
+
+    private static func record(_ event: WebSocketEventRecorder.Event) {
+        guard isEnabled else { return }
+        eventRecorder.record(event)
     }
 }
