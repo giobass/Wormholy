@@ -7,7 +7,7 @@ import XCTest
 @MainActor
 final class WebSocketModelTests: XCTestCase {
     override func tearDown() async throws {
-        Storage.webSocketMessageLimit = nil
+        Wormholy.webSocketMessageLimit = nil
         try await super.tearDown()
     }
 
@@ -46,8 +46,10 @@ final class WebSocketModelTests: XCTestCase {
         XCTAssertEqual(model.messages.last?.text, "world")
     }
 
-    func testAddMessageRespectsWebSocketMessageLimit() {
-        Storage.webSocketMessageLimit = 2
+    func testPublicWebSocketMessageLimitIsAppliedImmediately() {
+        Wormholy.webSocketMessageLimit = 2
+        XCTAssertEqual(Wormholy.webSocketMessageLimit, 2)
+
         let model = WebSocketModel(url: "wss://example.com/socket")
 
         model.addMessage(direction: .sent, message: .string("first"))
@@ -58,7 +60,7 @@ final class WebSocketModelTests: XCTestCase {
     }
 
     func testNilWebSocketMessageLimitKeepsCompleteHistory() {
-        Storage.webSocketMessageLimit = nil
+        Wormholy.webSocketMessageLimit = nil
         let model = WebSocketModel(url: "wss://example.com/socket")
 
         for index in 0..<3 {
