@@ -19,6 +19,14 @@ final class WebSocketInterceptorTests: XCTestCase {
         // No crash on repeated install: swizzling only happens once.
     }
 
+    func testWebSocketEnabledStateIsSharedWithObjectiveCBridge() {
+        Wormholy.setWebSocketEnabled(true)
+        XCTAssertTrue(WHWebSocketRecorder.isEnabled)
+
+        Wormholy.setWebSocketEnabled(false)
+        XCTAssertFalse(WHWebSocketRecorder.isEnabled)
+    }
+
     func testConcurrentFactoryCallsAttachModels() {
         Wormholy.setWebSocketEnabled(true)
         let lock = NSLock()

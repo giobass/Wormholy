@@ -5,7 +5,21 @@ import ObjectiveC
 
 internal enum WebSocketConfiguration {
     private static let lock = NSLock()
+    private static var storedIsEnabled = false
     private static var storedMessageLimit: NSNumber?
+
+    internal static var isEnabled: Bool {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return storedIsEnabled
+        }
+        set {
+            lock.lock()
+            defer { lock.unlock() }
+            storedIsEnabled = newValue
+        }
+    }
 
     internal static var messageLimit: NSNumber? {
         get {
@@ -32,7 +46,10 @@ internal enum WebSocketInterceptor {
     /// Controls whether swizzled methods actually record traffic. The swizzle itself,
     /// once installed, is never removed - this mirrors how HTTP tracking is toggled
     /// elsewhere in Wormholy (see `Wormholy.setEnabled`).
-    internal static var isEnabled: Bool = false
+    internal static var isEnabled: Bool {
+        get { WebSocketConfiguration.isEnabled }
+        set { WebSocketConfiguration.isEnabled = newValue }
+    }
 
     private static var isInstalled = false
     private static var swizzledConcreteClasses = Set<ObjectIdentifier>()
