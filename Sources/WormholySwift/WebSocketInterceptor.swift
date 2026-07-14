@@ -40,10 +40,8 @@ internal enum WebSocketInterceptor {
 
     internal static func install() {
         swizzleLock.lock()
-        let alreadyInstalled = isInstalled
-        if !alreadyInstalled { isInstalled = true }
-        swizzleLock.unlock()
-        guard !alreadyInstalled else { return }
+        defer { swizzleLock.unlock() }
+        guard !isInstalled else { return }
 
         wormholySwizzleInstanceMethod(URLSession.self,
                                        #selector(URLSession.webSocketTask(with:) as (URLSession) -> (URL) -> URLSessionWebSocketTask),
@@ -62,6 +60,7 @@ internal enum WebSocketInterceptor {
         // implements them, not the public `URLSessionWebSocketTask` class - swizzling the
         // public class's method table would have no effect on those instances. They're
         // swizzled lazily per real class instead, see `ensureSwizzledForActualClass`.
+        isInstalled = true
     }
 
     fileprivate static func attachModel(to task: URLSessionWebSocketTask, url: URL?, headers: [String: String], protocols: [String]) {
@@ -97,10 +96,8 @@ internal enum WebSocketInterceptor {
         let key = ObjectIdentifier(concreteClass)
 
         swizzleLock.lock()
-        let alreadySwizzled = swizzledConcreteClasses.contains(key)
-        if !alreadySwizzled { swizzledConcreteClasses.insert(key) }
-        swizzleLock.unlock()
-        guard !alreadySwizzled else { return }
+        defer { swizzleLock.unlock() }
+        guard !swizzledConcreteClasses.contains(key) else { return }
 
         wormholySwizzleInstanceMethod(concreteClass,
                                        #selector(URLSessionWebSocketTask.cancel(with:reason:)),
@@ -112,6 +109,8 @@ internal enum WebSocketInterceptor {
                 _ = swizzlerClass.perform(selector, with: task)
             }
         }
+
+        swizzledConcreteClasses.insert(key)
     }
 }
 

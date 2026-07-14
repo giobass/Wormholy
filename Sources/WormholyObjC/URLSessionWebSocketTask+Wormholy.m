@@ -118,26 +118,27 @@ static void Wormholy_receiveMessage(NSURLSessionWebSocketTask *self, SEL _cmd, W
 
     @synchronized (wormholySwizzledClasses) {
         if ([wormholySwizzledClasses containsObject:classKey]) return;
+
+        Method sendMethod = class_getInstanceMethod(cls, @selector(sendMessage:completionHandler:));
+        Method receiveMethod = class_getInstanceMethod(cls, @selector(receiveMessageWithCompletionHandler:));
+        IMP origSend = sendMethod ? method_getImplementation(sendMethod) : NULL;
+        IMP origReceive = receiveMethod ? method_getImplementation(receiveMethod) : NULL;
+
+        @synchronized (wormholyOrigSendIMPs) {
+            wormholyOrigSendIMPs[classKey] = [NSValue valueWithPointer:origSend];
+        }
+        @synchronized (wormholyOrigReceiveIMPs) {
+            wormholyOrigReceiveIMPs[classKey] = [NSValue valueWithPointer:origReceive];
+        }
+
+        if (origSend) {
+            WormholyReplaceMethod(@selector(sendMessage:completionHandler:), (IMP)Wormholy_sendMessage, cls, NO);
+        }
+        if (origReceive) {
+            WormholyReplaceMethod(@selector(receiveMessageWithCompletionHandler:), (IMP)Wormholy_receiveMessage, cls, NO);
+        }
+
         [wormholySwizzledClasses addObject:classKey];
-    }
-
-    Method sendMethod = class_getInstanceMethod(cls, @selector(sendMessage:completionHandler:));
-    Method receiveMethod = class_getInstanceMethod(cls, @selector(receiveMessageWithCompletionHandler:));
-    IMP origSend = sendMethod ? method_getImplementation(sendMethod) : NULL;
-    IMP origReceive = receiveMethod ? method_getImplementation(receiveMethod) : NULL;
-
-    if (origSend) {
-        WormholyReplaceMethod(@selector(sendMessage:completionHandler:), (IMP)Wormholy_sendMessage, cls, NO);
-    }
-    if (origReceive) {
-        WormholyReplaceMethod(@selector(receiveMessageWithCompletionHandler:), (IMP)Wormholy_receiveMessage, cls, NO);
-    }
-
-    @synchronized (wormholyOrigSendIMPs) {
-        wormholyOrigSendIMPs[classKey] = [NSValue valueWithPointer:origSend];
-    }
-    @synchronized (wormholyOrigReceiveIMPs) {
-        wormholyOrigReceiveIMPs[classKey] = [NSValue valueWithPointer:origReceive];
     }
 }
 
