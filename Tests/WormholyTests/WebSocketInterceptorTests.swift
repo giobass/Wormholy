@@ -88,22 +88,28 @@ final class WebSocketInterceptorTests: XCTestCase {
         XCTAssertEqual(model.messages.map(\.text), ["second", "third"])
     }
 
-    func testConcurrentFactoryCallsAttachModels() {
+    func testConcurrentFactoryCallsAttachModels() async {
         Wormholy.setWebSocketEnabled(true)
-        let lock = NSLock()
-        var tasks: [URLSessionWebSocketTask] = []
 
-        DispatchQueue.concurrentPerform(iterations: 20) { index in
-            let url = URL(string: "wss://example.com/socket/\(index)-\(UUID().uuidString)")!
-            let task = URLSession.shared.webSocketTask(with: url)
+        let allModelsAttached = await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let lock = NSLock()
+                var modelsAttached = true
 
-            lock.lock()
-            tasks.append(task)
-            lock.unlock()
+                DispatchQueue.concurrentPerform(iterations: 20) { index in
+                    let url = URL(string: "wss://example.com/socket/\(index)-\(UUID().uuidString)")!
+                    let task = URLSession.shared.webSocketTask(with: url)
+
+                    lock.lock()
+                    modelsAttached = modelsAttached && task.wormholyModel != nil
+                    lock.unlock()
+                }
+
+                continuation.resume(returning: modelsAttached)
+            }
         }
 
-        XCTAssertEqual(tasks.count, 20)
-        XCTAssertTrue(tasks.allSatisfy { $0.wormholyModel != nil })
+        XCTAssertTrue(allModelsAttached)
     }
 
     func testFactoryURLOverloadAttachesModelWithoutNetworkActivity() async {
