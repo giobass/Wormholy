@@ -97,7 +97,7 @@ static NSURLSession *Wormholy_sessionWithConfigurationDelegateQueue(id self,
 
 @implementation WHWebSocketSessionSwizzler
 
-+ (void)wormholy_install {
++ (void)wormholy_installWebSocketDelegateProxy {
     @synchronized (self) {
         if (wormholySessionSwizzleInstalled) return;
 

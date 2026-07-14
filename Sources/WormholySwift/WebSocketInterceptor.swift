@@ -82,7 +82,7 @@ internal enum WebSocketInterceptor {
 
     internal static func installSessionDelegateProxy() {
         guard let swizzlerClass = NSClassFromString("WHWebSocketSessionSwizzler") as? NSObject.Type else { return }
-        let selector = NSSelectorFromString("wormholy_install")
+        let selector = NSSelectorFromString("wormholy_installWebSocketDelegateProxy")
         guard swizzlerClass.responds(to: selector) else { return }
         _ = swizzlerClass.perform(selector)
     }
