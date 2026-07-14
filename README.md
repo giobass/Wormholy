@@ -113,7 +113,7 @@ Wormholy.setWebSocketEnabled(true)
 
 Once enabled, use the "Requests" / "WebSockets" segmented control at the top of the Wormholy screen to switch views and inspect captured WebSocket connections.
 
-Delegate-backed `URLSession` instances are proxied only when they are created while WebSocket tracking is enabled. Enable tracking before creating the session to capture delegate open and close events.
+Enable WebSocket tracking before creating WebSocket tasks. Existing tasks cannot be attached retroactively. Delegate-backed `URLSession` instances are also proxied only when they are created while tracking is enabled, so enable tracking before creating the session to capture delegate open and close events.
 
 Wormholy can capture:
 
@@ -144,7 +144,7 @@ task.resume()
 
 #### WebSocket Limitations
 
-- `send`, `receive`, `cancel`, and message capture work for WebSocket tasks created through the swizzled `URLSession` factories.
+- `send`, `receive`, `cancel`, and message capture work for WebSocket tasks created through the swizzled `URLSession` factories while WebSocket tracking is enabled.
 - Real `didOpen` / `didClose` events are captured through a lightweight `URLSession` delegate proxy, so they require sessions created with `URLSession(configuration:delegate:delegateQueue:)`.
 - WebSocket traffic created with `URLSession.shared` can still capture messages, but may not provide real open/close delegate callbacks.
 - WebSocket handshake response headers are not guaranteed and are only shown when available.

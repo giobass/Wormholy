@@ -148,6 +148,18 @@ final class WebSocketInterceptorTests: XCTestCase {
         XCTAssertNil(task.wormholyModel)
     }
 
+    func testEnablingTrackingDoesNotAttachPreviouslyCreatedTask() {
+        Wormholy.setWebSocketEnabled(false)
+
+        let url = URL(string: "wss://example.com/socket/\(UUID().uuidString)")!
+        let task = URLSession.shared.webSocketTask(with: url)
+
+        Wormholy.setWebSocketEnabled(true)
+
+        XCTAssertNil(task.wormholyModel)
+        XCTAssertTrue(Storage.shared.webSocketConnections.isEmpty)
+    }
+
     func testIgnoredHostDoesNotAttachModel() {
         Wormholy.setWebSocketEnabled(true)
         Wormholy.ignoredHosts = ["example.com"]
