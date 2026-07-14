@@ -30,10 +30,12 @@ internal final class ShareUtils {
         return shareText(text, fileSuffix: suffix)
     }
 
+    @MainActor
     internal static func shareWebSocket(connection: WebSocketModel) -> ActivityView {
         shareWebSockets(connections: [connection])
     }
 
+    @MainActor
     internal static func shareWebSockets(connections: [WebSocketModel]) -> ActivityView {
         shareText(connections.map(WebSocketModelBeautifier.txtExport).joined(), fileSuffix: "-wormholy-websocket.txt")
     }

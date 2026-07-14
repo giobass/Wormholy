@@ -66,6 +66,7 @@ internal enum WebSocketConnectionState: Equatable {
     }
 }
 
+@MainActor
 internal class WebSocketModel: Identifiable, ObservableObject, Equatable {
     internal let id: String
     @Published internal private(set) var url: String
@@ -130,7 +131,6 @@ internal class WebSocketModel: Identifiable, ObservableObject, Equatable {
         }
     }
 
-    @MainActor
     internal func markOpened(protocol negotiatedProtocol: String? = nil) {
         if self.openedAt == nil {
             self.openedAt = Date()
@@ -140,7 +140,6 @@ internal class WebSocketModel: Identifiable, ObservableObject, Equatable {
         }
     }
 
-    @MainActor
     internal func addMessage(direction: WebSocketMessageDirection, message: URLSessionWebSocketTask.Message) {
         self.messages.append(WebSocketMessage(direction: direction, timestamp: Date(), message: message))
         if let limit = WebSocketConfiguration.messageLimit?.intValue, limit >= 0, self.messages.count > limit {
@@ -148,13 +147,11 @@ internal class WebSocketModel: Identifiable, ObservableObject, Equatable {
         }
     }
 
-    @MainActor
     internal func updateResponseHeaders(_ headers: [String: String]) {
         guard !headers.isEmpty else { return }
         self.responseHeaders = headers
     }
 
-    @MainActor
     internal func markClosed(code: URLSessionWebSocketTask.CloseCode, reason: Data?) {
         self.closedAt = Date()
         self.closeCode = code
@@ -163,7 +160,6 @@ internal class WebSocketModel: Identifiable, ObservableObject, Equatable {
         }
     }
 
-    @MainActor
     internal func markError(_ error: Error) {
         guard self.closedAt == nil else { return }
         self.errorDescription = error.localizedDescription

@@ -45,6 +45,24 @@ final class WebSocketInterceptorTests: XCTestCase {
         XCTAssertFalse(enabledSession.delegate === enabledDelegate)
     }
 
+    func testBackgroundFactoryAttachesAndPublishesModel() async {
+        Wormholy.setWebSocketEnabled(true)
+        let modelPublished = expectation(description: "background task model published")
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            let url = URL(string: "wss://example.com/socket/\(UUID().uuidString)")!
+            let task = URLSession.shared.webSocketTask(with: url)
+
+            DispatchQueue.main.async {
+                XCTAssertEqual(task.wormholyModel?.url, url.absoluteString)
+                XCTAssertTrue(Storage.shared.webSocketConnections.contains { $0.id == task.wormholyModel?.id })
+                modelPublished.fulfill()
+            }
+        }
+
+        await fulfillment(of: [modelPublished], timeout: 1)
+    }
+
     func testConcurrentFactoryCallsAttachModels() {
         Wormholy.setWebSocketEnabled(true)
         let lock = NSLock()

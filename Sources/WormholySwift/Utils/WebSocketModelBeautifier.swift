@@ -4,6 +4,7 @@
 import Foundation
 import SwiftUI
 
+@MainActor
 internal enum WebSocketModelBeautifier {
     private static let previewLimit = 160
 

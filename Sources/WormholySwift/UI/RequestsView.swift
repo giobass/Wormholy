@@ -242,6 +242,7 @@ private struct ShareSheetPayload: Identifiable {
     let id = UUID()
     let content: Content
 
+    @MainActor
     var activityView: ActivityView {
         switch content {
         case let .requests(requests, exportOption):
