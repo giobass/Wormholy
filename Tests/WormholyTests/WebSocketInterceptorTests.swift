@@ -19,6 +19,24 @@ final class WebSocketInterceptorTests: XCTestCase {
         // No crash on repeated install: swizzling only happens once.
     }
 
+    func testConcurrentFactoryCallsAttachModels() {
+        Wormholy.setWebSocketEnabled(true)
+        let lock = NSLock()
+        var tasks: [URLSessionWebSocketTask] = []
+
+        DispatchQueue.concurrentPerform(iterations: 20) { index in
+            let url = URL(string: "wss://example.com/socket/\(index)-\(UUID().uuidString)")!
+            let task = URLSession.shared.webSocketTask(with: url)
+
+            lock.lock()
+            tasks.append(task)
+            lock.unlock()
+        }
+
+        XCTAssertEqual(tasks.count, 20)
+        XCTAssertTrue(tasks.allSatisfy { $0.wormholyModel != nil })
+    }
+
     func testFactoryURLOverloadAttachesModelWithoutNetworkActivity() async {
         Wormholy.setWebSocketEnabled(true)
 
