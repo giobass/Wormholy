@@ -9,6 +9,14 @@ import Combine
 final class WebSocketRealTaskTests: XCTestCase {
     private var cancellables = Set<AnyCancellable>()
 
+    override func setUpWithError() throws {
+        try XCTSkipUnless(
+            ProcessInfo.processInfo.environment["WORMHOLY_RUN_NETWORK_TESTS"] == "1",
+            "Set WORMHOLY_RUN_NETWORK_TESTS=1 to run WebSocket network integration tests."
+        )
+        try super.setUpWithError()
+    }
+
     override func tearDown() async throws {
         cancellables.removeAll()
         Wormholy.setWebSocketEnabled(false)
@@ -16,6 +24,8 @@ final class WebSocketRealTaskTests: XCTestCase {
         Storage.shared.clearWebSocketConnections()
         try await super.tearDown()
     }
+
+    // MARK: - Tests
 
     func testRealTaskSendCapturesCompletionHandlerAndAsyncMessages() async throws {
         Wormholy.setWebSocketEnabled(true)
@@ -80,6 +90,8 @@ final class WebSocketRealTaskTests: XCTestCase {
             messageRecordedExpectation(in: model, direction: .received, text: asyncPayload)
         ], timeout: 5)
     }
+
+    // MARK: - Private
 
     private static func remoteEchoURL() -> URL {
         URL(string: "wss://ws.postman-echo.com/raw")!
