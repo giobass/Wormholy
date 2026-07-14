@@ -6,6 +6,8 @@ import XCTest
 
 @MainActor
 final class WebSocketInterceptorTests: XCTestCase {
+    private final class SessionDelegate: NSObject, URLSessionDelegate {}
+
     override func tearDown() async throws {
         Wormholy.setWebSocketEnabled(false)
         Wormholy.ignoredHosts = []
@@ -25,6 +27,22 @@ final class WebSocketInterceptorTests: XCTestCase {
 
         Wormholy.setWebSocketEnabled(false)
         XCTAssertFalse(WHWebSocketRecorder.isEnabled)
+    }
+
+    func testDelegateProxyRequiresWebSocketTrackingWhenSessionIsCreated() {
+        Wormholy.setWebSocketEnabled(false)
+        let disabledDelegate = SessionDelegate()
+        let disabledSession = URLSession(configuration: .ephemeral,
+                                         delegate: disabledDelegate,
+                                         delegateQueue: nil)
+        XCTAssertTrue(disabledSession.delegate === disabledDelegate)
+
+        Wormholy.setWebSocketEnabled(true)
+        let enabledDelegate = SessionDelegate()
+        let enabledSession = URLSession(configuration: .ephemeral,
+                                        delegate: enabledDelegate,
+                                        delegateQueue: nil)
+        XCTAssertFalse(enabledSession.delegate === enabledDelegate)
     }
 
     func testConcurrentFactoryCallsAttachModels() {

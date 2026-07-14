@@ -13,6 +13,7 @@
 typedef NSURLSession * _Nonnull (*WHSessionWithDelegateIMP)(id, SEL, NSURLSessionConfiguration *, id<NSURLSessionDelegate>, NSOperationQueue *);
 
 static WHSessionWithDelegateIMP wormholyOrigSessionWithConfigurationDelegateQueue;
+static BOOL wormholySessionSwizzleInstalled = NO;
 static const void *WHOriginalDelegateKey = &WHOriginalDelegateKey;
 
 @interface WHWebSocketSessionDelegateProxy : NSObject <NSURLSessionWebSocketDelegate>
@@ -79,7 +80,7 @@ static NSURLSession *Wormholy_sessionWithConfigurationDelegateQueue(id self,
     id effectiveDelegate = delegate;
     WHWebSocketSessionDelegateProxy *proxy = nil;
 
-    if (delegate && ![delegate isKindOfClass:[WHWebSocketSessionDelegateProxy class]]) {
+    if ([WHWebSocketRecorder isEnabled] && delegate && ![delegate isKindOfClass:[WHWebSocketSessionDelegateProxy class]]) {
         proxy = [[WHWebSocketSessionDelegateProxy alloc] initWithDelegate:delegate];
         effectiveDelegate = proxy;
     }
@@ -91,9 +92,21 @@ static NSURLSession *Wormholy_sessionWithConfigurationDelegateQueue(id self,
     return session;
 }
 
-__attribute__((constructor)) static void webSocketSessionInjectEntry(void) {
-    wormholyOrigSessionWithConfigurationDelegateQueue = (WHSessionWithDelegateIMP)WormholyReplaceMethod(@selector(sessionWithConfiguration:delegate:delegateQueue:),
-                                                                                                        (IMP)Wormholy_sessionWithConfigurationDelegateQueue,
-                                                                                                        [NSURLSession class],
-                                                                                                        YES);
+@interface WHWebSocketSessionSwizzler : NSObject
+@end
+
+@implementation WHWebSocketSessionSwizzler
+
++ (void)wormholy_install {
+    @synchronized (self) {
+        if (wormholySessionSwizzleInstalled) return;
+
+        wormholyOrigSessionWithConfigurationDelegateQueue = (WHSessionWithDelegateIMP)WormholyReplaceMethod(@selector(sessionWithConfiguration:delegate:delegateQueue:),
+                                                                                                            (IMP)Wormholy_sessionWithConfigurationDelegateQueue,
+                                                                                                            [NSURLSession class],
+                                                                                                            YES);
+        wormholySessionSwizzleInstalled = YES;
+    }
 }
+
+@end

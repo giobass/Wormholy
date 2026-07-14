@@ -105,7 +105,7 @@ Background sessions are a separate case: Apple does not support custom `URLProto
 
 ### WebSocket Tracking
 
-Wormholy can also capture native `URLSessionWebSocketTask` traffic with no third-party WebSocket library. This is **off by default**, unlike HTTP tracking, since it intercepts every `send`/`receive` call:
+Wormholy can also capture native `URLSessionWebSocketTask` traffic with no third-party WebSocket library. This is **off by default**, unlike HTTP tracking:
 
 ```swift
 Wormholy.setWebSocketEnabled(true)
@@ -113,7 +113,7 @@ Wormholy.setWebSocketEnabled(true)
 
 Once enabled, use the "Requests" / "WebSockets" segmented control at the top of the Wormholy screen to switch views and inspect captured WebSocket connections.
 
-Delegate-backed `URLSession` instances are proxied when they are created, while `Wormholy.setWebSocketEnabled(_:)` controls whether WebSocket events and messages are recorded.
+Delegate-backed `URLSession` instances are proxied only when they are created while WebSocket tracking is enabled. Enable tracking before creating the session to capture delegate open and close events.
 
 Wormholy can capture:
 
