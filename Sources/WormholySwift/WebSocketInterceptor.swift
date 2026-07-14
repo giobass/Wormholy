@@ -3,6 +3,24 @@
 import Foundation
 import ObjectiveC
 
+internal enum WebSocketConfiguration {
+    private static let lock = NSLock()
+    private static var storedMessageLimit: NSNumber?
+
+    internal static var messageLimit: NSNumber? {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return storedMessageLimit
+        }
+        set {
+            lock.lock()
+            defer { lock.unlock() }
+            storedMessageLimit = newValue
+        }
+    }
+}
+
 /// Swizzles URLSession's WebSocket factory methods and URLSessionWebSocketTask's
 /// send/receive/cancel methods to capture WebSocket traffic without requiring
 /// any change in the host app's code.

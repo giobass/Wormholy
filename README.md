@@ -56,7 +56,7 @@ You can also integrate Wormholy using the **Swift Package Manager**!
 
 - **Ignored Hosts**: Specify hosts to be excluded from logging using `Wormholy.ignoredHosts`. This is useful for ignoring traffic to certain domains, and applies to both HTTP requests and WebSocket connections.
 - **Logging Limit**: Control the number of logs retained with `Wormholy.limit`. This helps manage memory usage by limiting the amount of data stored. The configured value is applied separately to HTTP requests and WebSocket connections.
-- **WebSocket Message Limit**: Use `Wormholy.webSocketMessageLimit` to cap the number of messages retained per WebSocket connection. When the limit is reached, Wormholy removes the oldest messages and keeps the most recent ones. The default `nil` value keeps the complete message history.
+- **WebSocket Message Limit**: Use `Wormholy.webSocketMessageLimit` to cap the number of messages retained per WebSocket connection. When the limit is reached, Wormholy removes the oldest messages and keeps the most recent ones. Changes apply to subsequently recorded messages. The default `nil` value keeps the complete message history.
 - **Default Filter**: Set a default filter for the search box with `Wormholy.defaultFilter` to streamline your debugging process.
 - **Enable/Disable HTTP Tracking**: Use `Wormholy.setEnabled(_:)` to toggle HTTP request tracking globally. You can also enable or disable it for specific `URLSessionConfiguration` instances using `Wormholy.setEnabled(_:sessionConfiguration:)`.
 - **Enable/Disable WebSocket Tracking**: Use `Wormholy.setWebSocketEnabled(_:)` to toggle native `URLSessionWebSocketTask` tracking. WebSocket tracking is independent from HTTP tracking and is disabled by default.

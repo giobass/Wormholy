@@ -48,7 +48,7 @@ final class WebSocketModelTests: XCTestCase {
 
     func testPublicWebSocketMessageLimitIsAppliedImmediately() {
         Wormholy.webSocketMessageLimit = 2
-        XCTAssertEqual(Wormholy.webSocketMessageLimit, 2)
+        XCTAssertEqual(Wormholy.webSocketMessageLimit?.intValue, 2)
 
         let model = WebSocketModel(url: "wss://example.com/socket")
 
@@ -61,6 +61,7 @@ final class WebSocketModelTests: XCTestCase {
 
     func testNilWebSocketMessageLimitKeepsCompleteHistory() {
         Wormholy.webSocketMessageLimit = nil
+        XCTAssertNil(Wormholy.webSocketMessageLimit)
         let model = WebSocketModel(url: "wss://example.com/socket")
 
         for index in 0..<3 {
