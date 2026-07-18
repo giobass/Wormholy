@@ -2,21 +2,12 @@
 // SPDX-License-Identifier: MIT
 
 import XCTest
-import Combine
 @testable import WormholySwift
 
 @MainActor
-final class WebSocketInterceptorTests: XCTestCase {
-    private final class SessionDelegate: NSObject, URLSessionDelegate {}
-    private var cancellables = Set<AnyCancellable>()
+final class WebSocketInterceptorTests: WebSocketTestCase {
 
-    override func tearDown() async throws {
-        cancellables.removeAll()
-        Wormholy.setWebSocketEnabled(false)
-        Wormholy.ignoredHosts = []
-        Storage.shared.clearWebSocketConnections()
-        try await super.tearDown()
-    }
+    // MARK: - Tests
 
     func testInstallIsIdempotent() {
         WebSocketInterceptor.install()
@@ -34,18 +25,45 @@ final class WebSocketInterceptorTests: XCTestCase {
 
     func testDelegateProxyRequiresWebSocketTrackingWhenSessionIsCreated() {
         Wormholy.setWebSocketEnabled(false)
-        let disabledDelegate = SessionDelegate()
+        let disabledDelegate = WebSocketLifecycleDelegate()
         let disabledSession = URLSession(configuration: .ephemeral,
                                          delegate: disabledDelegate,
                                          delegateQueue: nil)
         XCTAssertTrue(disabledSession.delegate === disabledDelegate)
 
         Wormholy.setWebSocketEnabled(true)
-        let enabledDelegate = SessionDelegate()
+        let enabledDelegate = WebSocketLifecycleDelegate()
         let enabledSession = URLSession(configuration: .ephemeral,
                                         delegate: enabledDelegate,
                                         delegateQueue: nil)
         XCTAssertFalse(enabledSession.delegate === enabledDelegate)
+    }
+
+    func testDelegateProxyForwardsAndCapturesLifecycleEvents() async throws {
+        Wormholy.setWebSocketEnabled(true)
+        let delegateOpened = expectation(description: "original delegate received didOpen")
+        let delegateClosed = expectation(description: "original delegate received didClose")
+        let delegate = WebSocketLifecycleDelegate(onOpen: { delegateOpened.fulfill() },
+                                                  onClose: { delegateClosed.fulfill() })
+        let session = URLSession(configuration: .ephemeral, delegate: delegate, delegateQueue: nil)
+        let task = session.webSocketTask(with: URL(string: "wss://example.com/socket/\(UUID().uuidString)")!)
+        let model = try XCTUnwrap(task.wormholyModel)
+        let proxy = try XCTUnwrap(session.delegate as? URLSessionWebSocketDelegate)
+        let didOpen = try XCTUnwrap(proxy.urlSession(_:webSocketTask:didOpenWithProtocol:))
+        let didClose = try XCTUnwrap(proxy.urlSession(_:webSocketTask:didCloseWith:reason:))
+
+        let modelOpened = openedExpectation(in: model)
+        didOpen(session, task, "chat")
+
+        await fulfillment(of: [delegateOpened, modelOpened], timeout: 1)
+        XCTAssertEqual(model.negotiatedProtocol, "chat")
+
+        let modelClosed = closedExpectation(in: model)
+        didClose(session, task, .normalClosure, Data("done".utf8))
+
+        await fulfillment(of: [delegateClosed, modelClosed], timeout: 1)
+        XCTAssertEqual(model.closeCode, .normalClosure)
+        XCTAssertEqual(model.closeReason, "done")
     }
 
     func testBackgroundFactoryAttachesAndPublishesModel() async {
@@ -185,4 +203,5 @@ final class WebSocketInterceptorTests: XCTestCase {
 
         XCTAssertNotNil(task.wormholyModel)
     }
+
 }

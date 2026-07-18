@@ -2,12 +2,10 @@
 // SPDX-License-Identifier: MIT
 
 import XCTest
-import Combine
 @testable import WormholySwift
 
 @MainActor
-final class WebSocketRealTaskTests: XCTestCase {
-    private var cancellables = Set<AnyCancellable>()
+final class WebSocketRealTaskTests: WebSocketTestCase {
 
     override func setUpWithError() throws {
         try XCTSkipUnless(
@@ -15,14 +13,6 @@ final class WebSocketRealTaskTests: XCTestCase {
             "Set WORMHOLY_RUN_NETWORK_TESTS=1 to run WebSocket network integration tests."
         )
         try super.setUpWithError()
-    }
-
-    override func tearDown() async throws {
-        cancellables.removeAll()
-        Wormholy.setWebSocketEnabled(false)
-        Wormholy.ignoredHosts = []
-        Storage.shared.clearWebSocketConnections()
-        try await super.tearDown()
     }
 
     // MARK: - Tests
@@ -91,6 +81,37 @@ final class WebSocketRealTaskTests: XCTestCase {
         ], timeout: 5)
     }
 
+    func testRealDelegateSessionForwardsAndCapturesLifecycleEvents() async throws {
+        Wormholy.setWebSocketEnabled(true)
+        let delegateOpened = expectation(description: "delegate received didOpen")
+        let delegateClosed = expectation(description: "delegate received didClose")
+        let delegate = WebSocketLifecycleDelegate(onOpen: { delegateOpened.fulfill() },
+                                                  onClose: { delegateClosed.fulfill() })
+        let session = URLSession(configuration: .ephemeral, delegate: delegate, delegateQueue: nil)
+        let task = session.webSocketTask(with: Self.remoteEchoURL())
+        addTeardownBlock {
+            task.cancel(with: .goingAway, reason: nil)
+            session.invalidateAndCancel()
+        }
+        let model = try XCTUnwrap(task.wormholyModel)
+
+        let modelOpened = openedExpectation(in: model)
+
+        task.resume()
+
+        await fulfillment(of: [delegateOpened, modelOpened], timeout: 10)
+        XCTAssertNotNil(model.openedAt)
+
+        let modelClosed = closedExpectation(in: model)
+
+        task.cancel(with: .normalClosure, reason: Data("done".utf8))
+
+        await fulfillment(of: [delegateClosed, modelClosed], timeout: 10)
+        XCTAssertNotNil(model.closedAt)
+        XCTAssertEqual(model.closeCode, .normalClosure)
+        XCTAssertEqual(model.closeReason, "done")
+    }
+
     // MARK: - Private
 
     private static func remoteEchoURL() -> URL {
@@ -116,4 +137,5 @@ final class WebSocketRealTaskTests: XCTestCase {
         }
         return expectation
     }
+
 }
