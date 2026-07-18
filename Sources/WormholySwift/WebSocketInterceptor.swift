@@ -3,6 +3,9 @@
 import Foundation
 import ObjectiveC
 
+private typealias WebSocketTaskWithURLFactory = (URLSession) -> (URL) -> URLSessionWebSocketTask
+private typealias WebSocketTaskWithRequestFactory = (URLSession) -> (URLRequest) -> URLSessionWebSocketTask
+
 internal enum WebSocketConfiguration {
     private static let lock = NSLock()
     private static var storedIsEnabled = false
@@ -61,7 +64,7 @@ internal enum WebSocketInterceptor {
         guard !isInstalled else { return }
 
         wormholySwizzleInstanceMethod(URLSession.self,
-                                       #selector(URLSession.webSocketTask(with:) as (URLSession) -> (URL) -> URLSessionWebSocketTask),
+                                       #selector(URLSession.webSocketTask(with:) as WebSocketTaskWithURLFactory),
                                        #selector(URLSession.wormholy_webSocketTaskWithURL(_:)))
 
         wormholySwizzleInstanceMethod(URLSession.self,
@@ -69,7 +72,7 @@ internal enum WebSocketInterceptor {
                                        #selector(URLSession.wormholy_webSocketTaskWithURL(_:protocols:)))
 
         wormholySwizzleInstanceMethod(URLSession.self,
-                                       #selector(URLSession.webSocketTask(with:) as (URLSession) -> (URLRequest) -> URLSessionWebSocketTask),
+                                       #selector(URLSession.webSocketTask(with:) as WebSocketTaskWithRequestFactory),
                                        #selector(URLSession.wormholy_webSocketTaskWithRequest(_:)))
 
         // `send`, `receive`, and `cancel(with:reason:)` aren't swizzled here: `URLSession`'s
@@ -97,9 +100,15 @@ internal enum WebSocketInterceptor {
         }
     }
 
-    fileprivate static func attachModel(to task: URLSessionWebSocketTask, url: URL?, headers: [String: String], protocols: [String]) {
+    fileprivate static func attachModel(to task: URLSessionWebSocketTask,
+                                        url: URL?,
+                                        headers: [String: String],
+                                        protocols: [String]) {
         guard isEnabled, let url = url else { return }
-        guard let host = url.host, CustomHTTPProtocol.ignoredHosts.filter({ host.hasSuffix($0) }).isEmpty else { return }
+        guard let host = url.host,
+              CustomHTTPProtocol.ignoredHosts.filter({ host.hasSuffix($0) }).isEmpty else {
+            return
+        }
 
         ensureSwizzledForActualClass(of: task)
 
@@ -182,7 +191,10 @@ extension URLSession {
 
     @objc dynamic func wormholy_webSocketTaskWithRequest(_ request: URLRequest) -> URLSessionWebSocketTask {
         let task = wormholy_webSocketTaskWithRequest(request)
-        WebSocketInterceptor.attachModel(to: task, url: request.url, headers: request.allHTTPHeaderFields ?? [:], protocols: [])
+        WebSocketInterceptor.attachModel(to: task,
+                                         url: request.url,
+                                         headers: request.allHTTPHeaderFields ?? [:],
+                                         protocols: [])
         return task
     }
 }
@@ -205,14 +217,17 @@ extension URLSessionWebSocketTask {
 
 private final class WebSocketEventRecorder {
     fileprivate enum Event {
-        case message(URLSessionWebSocketTask, WebSocketMessageDirection, URLSessionWebSocketTask.Message)
-        case opened(URLSessionWebSocketTask, String?)
-        case closed(URLSessionWebSocketTask, URLSessionWebSocketTask.CloseCode, Data?)
-        case error(URLSessionWebSocketTask, Error)
+        case message(URLSessionWebSocketTask, WebSocketMessageDirection, URLSessionWebSocketTask.Message, Date)
+        case opened(URLSessionWebSocketTask, String?, Date)
+        case closed(URLSessionWebSocketTask, URLSessionWebSocketTask.CloseCode, Data?, Date)
+        case error(URLSessionWebSocketTask, Error, Date)
 
         var task: URLSessionWebSocketTask {
             switch self {
-            case let .message(task, _, _), let .opened(task, _), let .closed(task, _, _), let .error(task, _):
+            case let .message(task, _, _, _),
+                 let .opened(task, _, _),
+                 let .closed(task, _, _, _),
+                 let .error(task, _, _):
                 return task
             }
         }
@@ -225,10 +240,10 @@ private final class WebSocketEventRecorder {
         @MainActor
         func apply() {
             switch self {
-            case let .message(task, direction, message):
-                task.wormholyModel?.addMessage(direction: direction, message: message)
-            case let .opened(task, negotiatedProtocol):
-                task.wormholyModel?.markOpened(protocol: negotiatedProtocol)
+            case let .message(task, direction, message, date):
+                task.wormholyModel?.addMessage(direction: direction, message: message, at: date)
+            case let .opened(task, negotiatedProtocol, date):
+                task.wormholyModel?.markOpened(protocol: negotiatedProtocol, at: date)
 
                 if let httpResponse = task.response as? HTTPURLResponse {
                     let headers = httpResponse.allHeaderFields.reduce(into: [String: String]()) { result, entry in
@@ -238,10 +253,10 @@ private final class WebSocketEventRecorder {
                     }
                     task.wormholyModel?.updateResponseHeaders(headers)
                 }
-            case let .closed(task, closeCode, reason):
-                task.wormholyModel?.markClosed(code: closeCode, reason: reason)
-            case let .error(task, error):
-                task.wormholyModel?.markError(error)
+            case let .closed(task, closeCode, reason, date):
+                task.wormholyModel?.markClosed(code: closeCode, reason: reason, at: date)
+            case let .error(task, error, date):
+                task.wormholyModel?.markError(error, at: date)
             }
         }
     }
@@ -309,33 +324,33 @@ public final class WHWebSocketRecorder: NSObject {
     @objc public static var isEnabled: Bool { WebSocketInterceptor.isEnabled }
 
     @objc public static func recordSentText(_ task: URLSessionWebSocketTask, text: String) {
-        record(.message(task, .sent, .string(text)))
+        record(.message(task, .sent, .string(text), Date()))
     }
 
     @objc public static func recordSentData(_ task: URLSessionWebSocketTask, data: Data) {
-        record(.message(task, .sent, .data(data)))
+        record(.message(task, .sent, .data(data), Date()))
     }
 
     @objc public static func recordReceivedText(_ task: URLSessionWebSocketTask, text: String) {
-        record(.message(task, .received, .string(text)))
+        record(.message(task, .received, .string(text), Date()))
     }
 
     @objc public static func recordReceivedData(_ task: URLSessionWebSocketTask, data: Data) {
-        record(.message(task, .received, .data(data)))
+        record(.message(task, .received, .data(data), Date()))
     }
 
     @objc public static func recordOpened(_ task: URLSessionWebSocketTask, protocol negotiatedProtocol: String?) {
-        record(.opened(task, negotiatedProtocol))
+        record(.opened(task, negotiatedProtocol, Date()))
     }
 
     @objc public static func recordClosed(_ task: URLSessionWebSocketTask,
                                           closeCode: URLSessionWebSocketTask.CloseCode,
                                           reason: Data?) {
-        record(.closed(task, closeCode, reason))
+        record(.closed(task, closeCode, reason, Date()))
     }
 
     @objc public static func recordError(_ task: URLSessionWebSocketTask, error: Error) {
-        record(.error(task, error))
+        record(.error(task, error, Date()))
     }
 
     private static func record(_ event: WebSocketEventRecorder.Event) {

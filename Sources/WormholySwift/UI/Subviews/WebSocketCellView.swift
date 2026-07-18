@@ -33,14 +33,24 @@ internal struct WebSocketCellView: View {
 
 struct WebSocketCellView_Previews: PreviewProvider {
     static var previews: some View {
-        let openConnection = WebSocketModel(url: "wss://ws.postman-echo.com/raw")
-        openConnection.markOpened()
-        openConnection.addMessage(direction: .sent, message: .string("hello"))
-        openConnection.addMessage(direction: .received, message: .string("hello back"))
+        let openConnectionStartedAt = Date(timeIntervalSinceNow: -120)
+        let openConnection = WebSocketModel(url: "wss://ws.postman-echo.com/raw",
+                                            startDate: openConnectionStartedAt)
+        openConnection.markOpened(at: openConnectionStartedAt.addingTimeInterval(2))
+        openConnection.addMessage(direction: .sent,
+                                  message: .string("hello"),
+                                  at: openConnectionStartedAt.addingTimeInterval(20))
+        openConnection.addMessage(direction: .received,
+                                  message: .string("hello back"),
+                                  at: openConnectionStartedAt.addingTimeInterval(21))
 
-        let closedConnection = WebSocketModel(url: "wss://ws.postman-echo.com/raw/very/long/path/that/wraps")
-        closedConnection.markOpened()
-        closedConnection.markClosed(code: .normalClosure, reason: nil)
+        let closedConnectionStartedAt = Date(timeIntervalSinceNow: -180)
+        let closedConnection = WebSocketModel(url: "wss://ws.postman-echo.com/raw/very/long/path/that/wraps",
+                                              startDate: closedConnectionStartedAt)
+        closedConnection.markOpened(at: closedConnectionStartedAt.addingTimeInterval(2))
+        closedConnection.markClosed(code: .normalClosure,
+                                    reason: nil,
+                                    at: closedConnectionStartedAt.addingTimeInterval(30))
 
         return VStack(alignment: .leading, spacing: 12) {
             WebSocketCellView(connection: openConnection)

@@ -6,22 +6,25 @@ import XCTest
 
 @MainActor
 final class WebSocketModelTests: XCTestCase {
+    private let baseDate = Date(timeIntervalSinceReferenceDate: 1_000)
+    private let minute: TimeInterval = 60
+
     override func tearDown() async throws {
         Wormholy.webSocketMessageLimit = nil
         try await super.tearDown()
     }
 
     func testInitialStateIsConnecting() {
-        let model = WebSocketModel(url: "wss://example.com/socket")
+        let model = WebSocketModel(url: "wss://example.com/socket", startDate: baseDate)
         XCTAssertEqual(model.state, .connecting)
         XCTAssertNil(model.openedAt)
         XCTAssertTrue(model.messages.isEmpty)
     }
 
     func testMarkOpenedRecordsNegotiatedProtocol() {
-        let model = WebSocketModel(url: "wss://example.com/socket")
+        let model = WebSocketModel(url: "wss://example.com/socket", startDate: baseDate)
 
-        model.markOpened(protocol: "chat")
+        model.markOpened(protocol: "chat", at: baseDate.addingTimeInterval(minute))
 
         XCTAssertEqual(model.state, .open)
         XCTAssertNotNil(model.openedAt)
@@ -29,9 +32,9 @@ final class WebSocketModelTests: XCTestCase {
     }
 
     func testAddMessageAppendsWithoutMarkingOpen() {
-        let model = WebSocketModel(url: "wss://example.com/socket")
+        let model = WebSocketModel(url: "wss://example.com/socket", startDate: baseDate)
 
-        model.addMessage(direction: .sent, message: .string("hello"))
+        model.addMessage(direction: .sent, message: .string("hello"), at: baseDate.addingTimeInterval(minute))
 
         XCTAssertEqual(model.state, .connecting)
         XCTAssertNil(model.openedAt)
@@ -39,7 +42,9 @@ final class WebSocketModelTests: XCTestCase {
         XCTAssertEqual(model.messages.first?.direction, .sent)
         XCTAssertEqual(model.messages.first?.text, "hello")
 
-        model.addMessage(direction: .received, message: .data("world".data(using: .utf8)!))
+        model.addMessage(direction: .received,
+                         message: .data(Data("world".utf8)),
+                         at: baseDate.addingTimeInterval(minute * 2))
 
         XCTAssertEqual(model.messages.count, 2)
         XCTAssertEqual(model.messages.last?.direction, .received)
@@ -50,11 +55,11 @@ final class WebSocketModelTests: XCTestCase {
         Wormholy.webSocketMessageLimit = 2
         XCTAssertEqual(Wormholy.webSocketMessageLimit?.intValue, 2)
 
-        let model = WebSocketModel(url: "wss://example.com/socket")
+        let model = WebSocketModel(url: "wss://example.com/socket", startDate: baseDate)
 
-        model.addMessage(direction: .sent, message: .string("first"))
-        model.addMessage(direction: .received, message: .string("second"))
-        model.addMessage(direction: .sent, message: .string("third"))
+        model.addMessage(direction: .sent, message: .string("first"), at: baseDate.addingTimeInterval(minute))
+        model.addMessage(direction: .received, message: .string("second"), at: baseDate.addingTimeInterval(minute * 2))
+        model.addMessage(direction: .sent, message: .string("third"), at: baseDate.addingTimeInterval(minute * 3))
 
         XCTAssertEqual(model.messages.map(\.text), ["second", "third"])
     }
@@ -62,20 +67,24 @@ final class WebSocketModelTests: XCTestCase {
     func testNilWebSocketMessageLimitKeepsCompleteHistory() {
         Wormholy.webSocketMessageLimit = nil
         XCTAssertNil(Wormholy.webSocketMessageLimit)
-        let model = WebSocketModel(url: "wss://example.com/socket")
+        let model = WebSocketModel(url: "wss://example.com/socket", startDate: baseDate)
 
         for index in 0..<3 {
-            model.addMessage(direction: .sent, message: .string("\(index)"))
+            model.addMessage(direction: .sent,
+                             message: .string("\(index)"),
+                             at: baseDate.addingTimeInterval(minute * TimeInterval(index)))
         }
 
         XCTAssertEqual(model.messages.map(\.text), ["0", "1", "2"])
     }
 
     func testMarkClosedRecordsCodeAndReason() {
-        let model = WebSocketModel(url: "wss://example.com/socket")
-        model.markOpened()
+        let model = WebSocketModel(url: "wss://example.com/socket", startDate: baseDate)
+        model.markOpened(at: baseDate.addingTimeInterval(minute))
 
-        model.markClosed(code: .normalClosure, reason: "bye".data(using: .utf8))
+        model.markClosed(code: .normalClosure,
+                         reason: Data("bye".utf8),
+                         at: baseDate.addingTimeInterval(minute * 2))
 
         XCTAssertEqual(model.state, .closed)
         XCTAssertEqual(model.closeCode, .normalClosure)
@@ -83,19 +92,40 @@ final class WebSocketModelTests: XCTestCase {
         XCTAssertNotNil(model.closedAt)
     }
 
+    func testEventDatesUseCaptureTime() {
+        let openedAt = baseDate
+        let messageAt = baseDate.addingTimeInterval(minute)
+        let closedAt = baseDate.addingTimeInterval(minute * 2)
+        let failedAt = baseDate.addingTimeInterval(minute * 3)
+        let model = WebSocketModel(url: "wss://example.com/socket", startDate: baseDate)
+        let failedModel = WebSocketModel(url: "wss://example.com/failed", startDate: baseDate)
+
+        model.markOpened(at: openedAt)
+        model.addMessage(direction: .sent, message: .string("hello"), at: messageAt)
+        model.markClosed(code: .normalClosure, reason: Data("done".utf8), at: closedAt)
+        failedModel.markError(URLError(.notConnectedToInternet), at: failedAt)
+
+        XCTAssertEqual(model.openedAt, openedAt)
+        XCTAssertEqual(model.messages.first?.occurredAt, messageAt)
+        XCTAssertEqual(model.closedAt, closedAt)
+        XCTAssertEqual(failedModel.failedAt, failedAt)
+    }
+
     func testMarkErrorSetsFailedState() {
-        let model = WebSocketModel(url: "wss://example.com/socket")
-        model.markError(URLError(.notConnectedToInternet))
+        let model = WebSocketModel(url: "wss://example.com/socket", startDate: baseDate)
+        model.markError(URLError(.notConnectedToInternet), at: baseDate.addingTimeInterval(minute))
 
         XCTAssertEqual(model.state, .failed)
         XCTAssertNotNil(model.errorDescription)
     }
 
     func testErrorAfterCloseDoesNotOverrideClosedState() {
-        let model = WebSocketModel(url: "wss://example.com/socket")
-        model.markClosed(code: .normalClosure, reason: "done".data(using: .utf8))
+        let model = WebSocketModel(url: "wss://example.com/socket", startDate: baseDate)
+        model.markClosed(code: .normalClosure,
+                         reason: Data("done".utf8),
+                         at: baseDate.addingTimeInterval(minute))
 
-        model.markError(URLError(.networkConnectionLost))
+        model.markError(URLError(.networkConnectionLost), at: baseDate.addingTimeInterval(minute * 2))
 
         XCTAssertEqual(model.state, .closed)
         XCTAssertNil(model.errorDescription)
@@ -104,7 +134,10 @@ final class WebSocketModelTests: XCTestCase {
     func testRefineConnectionMetadataUpgradesNormalizedSchemeToWebSocket() {
         // URLSession's `webSocketTask(with: URL)` delegates internally to `webSocketTask(with:
         // URLRequest)`, which normalizes ws/wss to http/https. This is what corrects it back.
-        let model = WebSocketModel(url: "https://example.com/socket", host: "example.com", scheme: "https")
+        let model = WebSocketModel(url: "https://example.com/socket",
+                                   host: "example.com",
+                                   scheme: "https",
+                                   startDate: baseDate)
         let wssURL = URL(string: "wss://example.com/socket")!
 
         model.refineConnectionMetadataIfNeeded(url: wssURL, headers: [:], protocols: [])
@@ -114,15 +147,23 @@ final class WebSocketModelTests: XCTestCase {
     }
 
     func testRefineConnectionMetadataDoesNotDowngradeWebSocketScheme() {
-        let model = WebSocketModel(url: "wss://example.com/socket", host: "example.com", scheme: "wss")
+        let model = WebSocketModel(url: "wss://example.com/socket",
+                                   host: "example.com",
+                                   scheme: "wss",
+                                   startDate: baseDate)
 
-        model.refineConnectionMetadataIfNeeded(url: URL(string: "https://example.com/socket")!, headers: [:], protocols: [])
+        model.refineConnectionMetadataIfNeeded(url: URL(string: "https://example.com/socket")!,
+                                                headers: [:],
+                                                protocols: [])
 
         XCTAssertEqual(model.scheme, "wss")
     }
 
     func testRefineConnectionMetadataFillsInMissingProtocolsAndHeaders() {
-        let model = WebSocketModel(url: "https://example.com/socket", host: "example.com", scheme: "https")
+        let model = WebSocketModel(url: "https://example.com/socket",
+                                   host: "example.com",
+                                   scheme: "https",
+                                   startDate: baseDate)
 
         model.refineConnectionMetadataIfNeeded(url: URL(string: "wss://example.com/socket")!,
                                                 headers: ["Authorization": "Bearer token"],
@@ -133,7 +174,7 @@ final class WebSocketModelTests: XCTestCase {
     }
 
     func testUpdateResponseHeadersStoresHandshakeHeaders() {
-        let model = WebSocketModel(url: "wss://example.com/socket")
+        let model = WebSocketModel(url: "wss://example.com/socket", startDate: baseDate)
 
         model.updateResponseHeaders(["Upgrade": "websocket"])
 
@@ -143,10 +184,15 @@ final class WebSocketModelTests: XCTestCase {
     func testWebSocketExportIncludesHeadersAndMessages() {
         let model = WebSocketModel(url: "wss://example.com/socket",
                                    requestHeaders: ["Authorization": "Bearer token"],
-                                   responseHeaders: ["Upgrade": "websocket"])
+                                   responseHeaders: ["Upgrade": "websocket"],
+                                   startDate: baseDate)
 
-        model.addMessage(direction: .sent, message: .string("{\"type\":\"ping\"}"))
-        model.addMessage(direction: .received, message: .string("{\"type\":\"pong\"}"))
+        model.addMessage(direction: .sent,
+                         message: .string("{\"type\":\"ping\"}"),
+                         at: baseDate.addingTimeInterval(minute))
+        model.addMessage(direction: .received,
+                         message: .string("{\"type\":\"pong\"}"),
+                         at: baseDate.addingTimeInterval(minute * 2))
 
         let export = WebSocketModelBeautifier.txtExport(connection: model)
 
@@ -161,10 +207,11 @@ final class WebSocketModelTests: XCTestCase {
     }
 
     func testWebSocketBodyTextPreservesPlainTextMessages() {
-        let model = WebSocketModel(url: "wss://example.com/socket")
+        let model = WebSocketModel(url: "wss://example.com/socket", startDate: baseDate)
 
-        model.addMessage(direction: .sent, message: .string("plain text message"))
-
+        model.addMessage(direction: .sent,
+                         message: .string("plain text message"),
+                         at: baseDate.addingTimeInterval(minute))
         XCTAssertEqual(model.messages.first.map(WebSocketModelBeautifier.bodyText), "plain text message")
     }
 }

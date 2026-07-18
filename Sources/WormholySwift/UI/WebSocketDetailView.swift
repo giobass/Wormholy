@@ -122,6 +122,7 @@ private struct WebSocketMessageRow: View {
 
 struct WebSocketDetailView_Previews: PreviewProvider {
     static var previews: some View {
+        let connectionStartedAt = Date(timeIntervalSinceNow: -180)
         let connection = WebSocketModel(
             url: "wss://ws.postman-echo.com/raw",
             requestHeaders: [
@@ -129,17 +130,30 @@ struct WebSocketDetailView_Previews: PreviewProvider {
                 "X-Wormholy-Feature": "websocket-demo"
             ],
             responseHeaders: ["Upgrade": "websocket"],
-            requestedProtocols: ["chat"]
+            requestedProtocols: ["chat"],
+            startDate: connectionStartedAt
         )
-        connection.markOpened()
-        connection.addMessage(direction: .sent, message: .string("{\"type\":\"subscribe\"}"))
-        connection.addMessage(direction: .received, message: .string("{\"type\":\"ack\"}"))
-        connection.addMessage(direction: .received, message: .data("binary-payload".data(using: .utf8)!))
+        connection.markOpened(at: connectionStartedAt.addingTimeInterval(2))
+        connection.addMessage(direction: .sent,
+                              message: .string("{\"type\":\"subscribe\"}"),
+                              at: connectionStartedAt.addingTimeInterval(8))
+        connection.addMessage(direction: .received,
+                              message: .string("{\"type\":\"ack\"}"),
+                              at: connectionStartedAt.addingTimeInterval(9))
+        connection.addMessage(direction: .received,
+                              message: .data(Data("binary-payload".utf8)),
+                              at: connectionStartedAt.addingTimeInterval(15))
 
-        let closedConnection = WebSocketModel(url: "wss://ws.postman-echo.com/raw")
-        closedConnection.markOpened()
-        closedConnection.addMessage(direction: .sent, message: .string("ping"))
-        closedConnection.markClosed(code: .normalClosure, reason: "done".data(using: .utf8))
+        let closedConnectionStartedAt = Date(timeIntervalSinceNow: -240)
+        let closedConnection = WebSocketModel(url: "wss://ws.postman-echo.com/raw",
+                                              startDate: closedConnectionStartedAt)
+        closedConnection.markOpened(at: closedConnectionStartedAt.addingTimeInterval(2))
+        closedConnection.addMessage(direction: .sent,
+                                    message: .string("ping"),
+                                    at: closedConnectionStartedAt.addingTimeInterval(10))
+        closedConnection.markClosed(code: .normalClosure,
+                                    reason: Data("done".utf8),
+                                    at: closedConnectionStartedAt.addingTimeInterval(25))
 
         return Group {
             NavigationStack { WebSocketDetailView(connection: connection) }

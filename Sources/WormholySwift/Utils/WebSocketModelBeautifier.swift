@@ -66,7 +66,7 @@ internal enum WebSocketModelBeautifier {
     }
 
     static func messageMetadata(_ message: WebSocketMessage) -> String {
-        "\(formatTime(message.timestamp)) - \(messageKind(message)) - \(message.byteCount) B"
+        "\(formatTime(message.occurredAt)) - \(messageKind(message)) - \(message.byteCount) B"
     }
 
     static func txtExport(connection: WebSocketModel) -> String {
@@ -83,7 +83,8 @@ internal enum WebSocketModelBeautifier {
             text += "No messages captured.\n"
         } else {
             for message in connection.messages {
-                text += "[\(formatDate(message.timestamp))] \(message.direction.title) \(messageKind(message)) \(message.byteCount) B\n"
+                text += "[\(formatDate(message.occurredAt))] \(message.direction.title) "
+                text += "\(messageKind(message)) \(message.byteCount) B\n"
                 text += "\(bodyText(message))\n\n"
             }
         }
@@ -103,7 +104,7 @@ internal enum WebSocketModelBeautifier {
     }
 
     private static func duration(_ connection: WebSocketModel) -> String {
-        let endDate = connection.closedAt ?? Date()
+        let endDate = connection.closedAt ?? connection.failedAt ?? Date()
         guard endDate >= connection.startDate else { return "-" }
         return (endDate.timeIntervalSince(connection.startDate) * 1000).formattedMilliseconds()
     }

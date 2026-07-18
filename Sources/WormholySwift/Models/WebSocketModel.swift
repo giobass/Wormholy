@@ -22,7 +22,7 @@ internal enum WebSocketMessageDirection: Equatable {
 internal struct WebSocketMessage: Identifiable {
     internal let id: String = UUID().uuidString
     internal let direction: WebSocketMessageDirection
-    internal let timestamp: Date
+    internal let occurredAt: Date
     internal let message: URLSessionWebSocketTask.Message
 
     internal var text: String? {
@@ -84,6 +84,7 @@ internal class WebSocketModel: Identifiable, ObservableObject, Equatable {
     @Published internal private(set) var closeCode: URLSessionWebSocketTask.CloseCode?
     @Published internal private(set) var closeReason: String?
     @Published internal private(set) var errorDescription: String?
+    @Published internal private(set) var failedAt: Date?
 
     internal var state: WebSocketConnectionState {
         if closedAt != nil { return .closed }
@@ -131,17 +132,19 @@ internal class WebSocketModel: Identifiable, ObservableObject, Equatable {
         }
     }
 
-    internal func markOpened(protocol negotiatedProtocol: String? = nil) {
+    internal func markOpened(protocol negotiatedProtocol: String? = nil, at date: Date) {
         if self.openedAt == nil {
-            self.openedAt = Date()
+            self.openedAt = date
         }
         if let negotiatedProtocol = negotiatedProtocol {
             self.negotiatedProtocol = negotiatedProtocol
         }
     }
 
-    internal func addMessage(direction: WebSocketMessageDirection, message: URLSessionWebSocketTask.Message) {
-        self.messages.append(WebSocketMessage(direction: direction, timestamp: Date(), message: message))
+    internal func addMessage(direction: WebSocketMessageDirection,
+                             message: URLSessionWebSocketTask.Message,
+                             at date: Date) {
+        self.messages.append(WebSocketMessage(direction: direction, occurredAt: date, message: message))
         if let limit = WebSocketConfiguration.messageLimit?.intValue, limit >= 0, self.messages.count > limit {
             self.messages.removeFirst(self.messages.count - limit)
         }
@@ -152,17 +155,20 @@ internal class WebSocketModel: Identifiable, ObservableObject, Equatable {
         self.responseHeaders = headers
     }
 
-    internal func markClosed(code: URLSessionWebSocketTask.CloseCode, reason: Data?) {
-        self.closedAt = Date()
+    internal func markClosed(code: URLSessionWebSocketTask.CloseCode,
+                             reason: Data?,
+                             at date: Date) {
+        self.closedAt = date
         self.closeCode = code
         if let reason = reason {
             self.closeReason = String(data: reason, encoding: .utf8)
         }
     }
 
-    internal func markError(_ error: Error) {
+    internal func markError(_ error: Error, at date: Date) {
         guard self.closedAt == nil else { return }
         self.errorDescription = error.localizedDescription
+        self.failedAt = date
     }
 
     internal static func == (lhs: WebSocketModel, rhs: WebSocketModel) -> Bool {

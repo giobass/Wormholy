@@ -184,7 +184,8 @@ internal struct RequestsView: View {
 
     private func applyFilters() {
         filteredRequests = storage.requests.filter { request in
-            let matchesSearchText = searchText.isEmpty || request.url.range(of: searchText, options: .caseInsensitive) != nil
+            let matchesSearchText = searchText.isEmpty
+                || request.url.range(of: searchText, options: .caseInsensitive) != nil
             let matchesStatusCode = selectedStatusCodeRange.map { $0.contains(request.code) } ?? true
             return matchesSearchText && matchesStatusCode
         }
@@ -281,7 +282,10 @@ struct RequestsView_Previews: PreviewProvider {
             ),
             RequestModel(
                 id: UUID().uuidString,
-                url: "https://example.com/api/v2/resources/items/67890/details?include=summary&expand=none&additional=parameters&to=make&url=longer&for=testing&purposes=only&this=is&a=very&long=url&that=should&be=twice&as=long&as=the&original",
+                url: "https://example.com/api/v2/resources/items/67890/details?"
+                    + "include=summary&expand=none&additional=parameters&to=make&url=longer&"
+                    + "for=testing&purposes=only&this=is&a=very&long=url&that=should&be=twice&"
+                    + "as=long&as=the&original",
                 host: "example.com",
                 port: 443,
                 scheme: "https",
@@ -299,9 +303,12 @@ struct RequestsView_Previews: PreviewProvider {
             )
         ]
 
-        let fakeConnection = WebSocketModel(url: "wss://ws.postman-echo.com/raw")
-        fakeConnection.markOpened()
-        fakeConnection.addMessage(direction: .sent, message: .string("hello"))
+        let connectionStartedAt = Date(timeIntervalSinceNow: -90)
+        let fakeConnection = WebSocketModel(url: "wss://ws.postman-echo.com/raw", startDate: connectionStartedAt)
+        fakeConnection.markOpened(at: connectionStartedAt.addingTimeInterval(2))
+        fakeConnection.addMessage(direction: .sent,
+                                  message: .string("hello"),
+                                  at: connectionStartedAt.addingTimeInterval(12))
 
         return RequestsView(requests: fakeRequests, webSocketConnections: [fakeConnection])
             .previewInterfaceOrientation(.landscapeLeft)
