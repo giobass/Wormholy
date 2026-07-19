@@ -108,6 +108,7 @@ final class WebSocketInterceptorTests: WebSocketTestCase {
 
     func testRecorderPublishesMessageBurstOnce() async throws {
         Wormholy.setWebSocketEnabled(true)
+        Wormholy.webSocketMessageLimit = nil
         let task = URLSession.shared.webSocketTask(with: URL(string: "wss://example.com/socket/\(UUID().uuidString)")!)
         let model = try XCTUnwrap(task.wormholyModel)
         let messagesRecorded = expectation(description: "messages recorded in one publication")
