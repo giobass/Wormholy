@@ -106,6 +106,89 @@ final class WebSocketInterceptorTests: WebSocketTestCase {
         XCTAssertEqual(model.messages.map(\.text), ["second", "third"])
     }
 
+    func testRecorderPublishesMessageBurstOnce() async throws {
+        Wormholy.setWebSocketEnabled(true)
+        let task = URLSession.shared.webSocketTask(with: URL(string: "wss://example.com/socket/\(UUID().uuidString)")!)
+        let model = try XCTUnwrap(task.wormholyModel)
+        let messagesRecorded = expectation(description: "messages recorded in one publication")
+        var publicationCount = 0
+
+        model.$messages
+            .dropFirst()
+            .sink { messages in
+                publicationCount += 1
+                if messages.map(\.text) == ["first", "second", "third"] {
+                    messagesRecorded.fulfill()
+                }
+            }
+            .store(in: &cancellables)
+
+        WHWebSocketRecorder.recordSentText(task, text: "first")
+        WHWebSocketRecorder.recordReceivedText(task, text: "second")
+        WHWebSocketRecorder.recordSentText(task, text: "third")
+
+        await fulfillment(of: [messagesRecorded], timeout: 1)
+        XCTAssertEqual(publicationCount, 1)
+    }
+
+    func testRecorderAppliesPendingMessageLimitPerTask() async throws {
+        Wormholy.setWebSocketEnabled(true)
+        Wormholy.webSocketMessageLimit = 10
+        let firstTaskURL = URL(string: "wss://example.com/first/\(UUID().uuidString)")!
+        let secondTaskURL = URL(string: "wss://example.com/second/\(UUID().uuidString)")!
+        let firstTask = URLSession.shared.webSocketTask(with: firstTaskURL)
+        let secondTask = URLSession.shared.webSocketTask(with: secondTaskURL)
+        let firstModel = try XCTUnwrap(firstTask.wormholyModel)
+        let secondModel = try XCTUnwrap(secondTask.wormholyModel)
+        let firstMessagesRecorded = expectation(description: "first task messages recorded")
+        let secondMessagesRecorded = expectation(description: "second task messages recorded")
+        let expectedFirstMessages = (90..<100).map { "first-\($0)" }
+        let expectedSecondMessages = (90..<100).map { "second-\($0)" }
+
+        firstModel.$messages
+            .dropFirst()
+            .filter { $0.map(\.text) == expectedFirstMessages }
+            .prefix(1)
+            .sink { _ in firstMessagesRecorded.fulfill() }
+            .store(in: &cancellables)
+
+        secondModel.$messages
+            .dropFirst()
+            .filter { $0.map(\.text) == expectedSecondMessages }
+            .prefix(1)
+            .sink { _ in secondMessagesRecorded.fulfill() }
+            .store(in: &cancellables)
+
+        for index in 0..<100 {
+            WHWebSocketRecorder.recordSentText(firstTask, text: "first-\(index)")
+            WHWebSocketRecorder.recordReceivedText(secondTask, text: "second-\(index)")
+        }
+
+        await fulfillment(of: [firstMessagesRecorded, secondMessagesRecorded], timeout: 1)
+        XCTAssertEqual(firstModel.messages.map(\.text), expectedFirstMessages)
+        XCTAssertEqual(secondModel.messages.map(\.text), expectedSecondMessages)
+    }
+
+    func testRecorderFlushesMessagesBeforeLifecycleEvent() async throws {
+        Wormholy.setWebSocketEnabled(true)
+        let task = URLSession.shared.webSocketTask(with: URL(string: "wss://example.com/socket/\(UUID().uuidString)")!)
+        let model = try XCTUnwrap(task.wormholyModel)
+        let connectionClosed = expectation(description: "connection closed after messages are recorded")
+
+        model.$closedAt
+            .dropFirst()
+            .sink { _ in
+                XCTAssertEqual(model.messages.map(\.text), ["before close"])
+                connectionClosed.fulfill()
+            }
+            .store(in: &cancellables)
+
+        WHWebSocketRecorder.recordSentText(task, text: "before close")
+        WHWebSocketRecorder.recordClosed(task, closeCode: .normalClosure, reason: nil)
+
+        await fulfillment(of: [connectionClosed], timeout: 1)
+    }
+
     func testConcurrentFactoryCallsAttachModels() async {
         Wormholy.setWebSocketEnabled(true)
 
