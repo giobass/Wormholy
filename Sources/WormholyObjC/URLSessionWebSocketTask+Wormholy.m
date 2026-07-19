@@ -34,6 +34,38 @@ static NSMutableSet<NSValue *> *wormholySwizzledClasses;
 static NSMutableDictionary<NSValue *, NSValue *> *wormholyOrigSendIMPs;
 static NSMutableDictionary<NSValue *, NSValue *> *wormholyOrigReceiveIMPs;
 
+static BOOL WHClassDirectlyImplementsSelector(Class cls, SEL selector) {
+    Method method = class_getInstanceMethod(cls, selector);
+    Class superclass = class_getSuperclass(cls);
+    Method inheritedMethod = superclass ? class_getInstanceMethod(superclass, selector) : NULL;
+    return method && method != inheritedMethod;
+}
+
+static IMP WHOriginalIMPForClass(NSDictionary<NSValue *, NSValue *> *originalIMPs, Class cls) {
+    @synchronized (originalIMPs) {
+        for (Class currentClass = cls; currentClass != Nil; currentClass = class_getSuperclass(currentClass)) {
+            NSValue *classKey = [NSValue valueWithNonretainedObject:currentClass];
+            NSValue *originalIMP = originalIMPs[classKey];
+            if (originalIMP) {
+                return originalIMP.pointerValue;
+            }
+        }
+    }
+    return NULL;
+}
+
+static IMP WHInheritedOriginalIMP(NSDictionary<NSValue *, NSValue *> *originalIMPs, Class cls, SEL selector) {
+    for (Class currentClass = class_getSuperclass(cls); currentClass != Nil; currentClass = class_getSuperclass(currentClass)) {
+        if (WHClassDirectlyImplementsSelector(currentClass, selector)) {
+            NSValue *classKey = [NSValue valueWithNonretainedObject:currentClass];
+            @synchronized (originalIMPs) {
+                return [originalIMPs[classKey] pointerValue];
+            }
+        }
+    }
+    return NULL;
+}
+
 static void recordSentOrErrored(NSURLSessionWebSocketTask *task, NSURLSessionWebSocketMessage *message, NSError * _Nullable error) {
     if (![WHWebSocketRecorder isEnabled]) return;
 
@@ -59,10 +91,7 @@ static void recordReceivedOrErrored(NSURLSessionWebSocketTask *task, NSURLSessio
 }
 
 static void Wormholy_sendMessage(NSURLSessionWebSocketTask *self, SEL _cmd, NSURLSessionWebSocketMessage *message, WHSendCompletion completionHandler) {
-    WHSendIMP orig = NULL;
-    @synchronized (wormholyOrigSendIMPs) {
-        orig = [wormholyOrigSendIMPs[[NSValue valueWithNonretainedObject:object_getClass(self)]] pointerValue];
-    }
+    WHSendIMP orig = (WHSendIMP)WHOriginalIMPForClass(wormholyOrigSendIMPs, object_getClass(self));
     if (!orig) {
         if (completionHandler) {
             completionHandler([NSError errorWithDomain:@"WormholyWebSocket"
@@ -79,10 +108,7 @@ static void Wormholy_sendMessage(NSURLSessionWebSocketTask *self, SEL _cmd, NSUR
 }
 
 static void Wormholy_receiveMessage(NSURLSessionWebSocketTask *self, SEL _cmd, WHReceiveCompletion completionHandler) {
-    WHReceiveIMP orig = NULL;
-    @synchronized (wormholyOrigReceiveIMPs) {
-        orig = [wormholyOrigReceiveIMPs[[NSValue valueWithNonretainedObject:object_getClass(self)]] pointerValue];
-    }
+    WHReceiveIMP orig = (WHReceiveIMP)WHOriginalIMPForClass(wormholyOrigReceiveIMPs, object_getClass(self));
     if (!orig) {
         if (completionHandler) {
             completionHandler(nil, [NSError errorWithDomain:@"WormholyWebSocket"
@@ -102,6 +128,8 @@ static void Wormholy_receiveMessage(NSURLSessionWebSocketTask *self, SEL _cmd, W
 /// from WormholySwift on WormholyObjC), called the first time each WebSocket factory method
 /// attaches a model to a task - see `WebSocketInterceptor.ensureSwizzledForActualClass`.
 @interface WHWebSocketTaskSwizzler : NSObject
++ (void)wormholy_ensureSwizzledFor:(NSURLSessionWebSocketTask *)task;
++ (void)wormholy_ensureSwizzledForClass:(Class)cls;
 @end
 
 @implementation WHWebSocketTaskSwizzler
@@ -114,28 +142,44 @@ static void Wormholy_receiveMessage(NSURLSessionWebSocketTask *self, SEL _cmd, W
 
 + (void)wormholy_ensureSwizzledFor:(NSURLSessionWebSocketTask *)task {
     Class cls = object_getClass(task);
+    [self wormholy_ensureSwizzledForClass:cls];
+}
+
++ (void)wormholy_ensureSwizzledForClass:(Class)cls {
+    if (!cls) return;
+
     NSValue *classKey = [NSValue valueWithNonretainedObject:cls];
 
     @synchronized (wormholySwizzledClasses) {
         if ([wormholySwizzledClasses containsObject:classKey]) return;
 
-        Method sendMethod = class_getInstanceMethod(cls, @selector(sendMessage:completionHandler:));
-        Method receiveMethod = class_getInstanceMethod(cls, @selector(receiveMessageWithCompletionHandler:));
-        IMP origSend = sendMethod ? method_getImplementation(sendMethod) : NULL;
-        IMP origReceive = receiveMethod ? method_getImplementation(receiveMethod) : NULL;
+        SEL sendSelector = @selector(sendMessage:completionHandler:);
+        SEL receiveSelector = @selector(receiveMessageWithCompletionHandler:);
+        BOOL implementsSendDirectly = WHClassDirectlyImplementsSelector(cls, sendSelector);
+        BOOL implementsReceiveDirectly = WHClassDirectlyImplementsSelector(cls, receiveSelector);
+        IMP inheritedSend = WHInheritedOriginalIMP(wormholyOrigSendIMPs, cls, sendSelector);
+        IMP inheritedReceive = WHInheritedOriginalIMP(wormholyOrigReceiveIMPs, cls, receiveSelector);
 
-        @synchronized (wormholyOrigSendIMPs) {
-            wormholyOrigSendIMPs[classKey] = [NSValue valueWithPointer:origSend];
-        }
-        @synchronized (wormholyOrigReceiveIMPs) {
-            wormholyOrigReceiveIMPs[classKey] = [NSValue valueWithPointer:origReceive];
+        if (implementsSendDirectly || !inheritedSend) {
+            Method sendMethod = class_getInstanceMethod(cls, sendSelector);
+            IMP origSend = sendMethod ? method_getImplementation(sendMethod) : NULL;
+            if (origSend && origSend != (IMP)Wormholy_sendMessage) {
+                @synchronized (wormholyOrigSendIMPs) {
+                    wormholyOrigSendIMPs[classKey] = [NSValue valueWithPointer:origSend];
+                }
+                WormholyReplaceMethod(sendSelector, (IMP)Wormholy_sendMessage, cls, NO);
+            }
         }
 
-        if (origSend) {
-            WormholyReplaceMethod(@selector(sendMessage:completionHandler:), (IMP)Wormholy_sendMessage, cls, NO);
-        }
-        if (origReceive) {
-            WormholyReplaceMethod(@selector(receiveMessageWithCompletionHandler:), (IMP)Wormholy_receiveMessage, cls, NO);
+        if (implementsReceiveDirectly || !inheritedReceive) {
+            Method receiveMethod = class_getInstanceMethod(cls, receiveSelector);
+            IMP origReceive = receiveMethod ? method_getImplementation(receiveMethod) : NULL;
+            if (origReceive && origReceive != (IMP)Wormholy_receiveMessage) {
+                @synchronized (wormholyOrigReceiveIMPs) {
+                    wormholyOrigReceiveIMPs[classKey] = [NSValue valueWithPointer:origReceive];
+                }
+                WormholyReplaceMethod(receiveSelector, (IMP)Wormholy_receiveMessage, cls, NO);
+            }
         }
 
         [wormholySwizzledClasses addObject:classKey];

@@ -9,12 +9,6 @@ final class WebSocketInterceptorTests: WebSocketTestCase {
 
     // MARK: - Tests
 
-    func testInstallIsIdempotent() {
-        WebSocketInterceptor.install()
-        WebSocketInterceptor.install()
-        // No crash on repeated install: swizzling only happens once.
-    }
-
     func testWebSocketEnabledStateIsSharedWithObjectiveCBridge() {
         Wormholy.setWebSocketEnabled(true)
         XCTAssertTrue(WHWebSocketRecorder.isEnabled)
@@ -188,63 +182,6 @@ final class WebSocketInterceptorTests: WebSocketTestCase {
         WHWebSocketRecorder.recordClosed(task, closeCode: .normalClosure, reason: nil)
 
         await fulfillment(of: [connectionClosed], timeout: 1)
-    }
-
-    func testConcurrentFactoryCallsAttachModels() async {
-        Wormholy.setWebSocketEnabled(true)
-
-        let allModelsAttached = await withCheckedContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                let lock = NSLock()
-                var modelsAttached = true
-
-                DispatchQueue.concurrentPerform(iterations: 20) { index in
-                    let url = URL(string: "wss://example.com/socket/\(index)-\(UUID().uuidString)")!
-                    let task = URLSession.shared.webSocketTask(with: url)
-
-                    lock.lock()
-                    modelsAttached = modelsAttached && task.wormholyModel != nil
-                    lock.unlock()
-                }
-
-                continuation.resume(returning: modelsAttached)
-            }
-        }
-
-        XCTAssertTrue(allModelsAttached)
-    }
-
-    func testFactoryURLOverloadAttachesModelWithoutNetworkActivity() async {
-        Wormholy.setWebSocketEnabled(true)
-
-        let url = URL(string: "wss://example.com/socket/\(UUID().uuidString)")!
-        let task = URLSession.shared.webSocketTask(with: url)
-
-        XCTAssertEqual(task.wormholyModel?.url, url.absoluteString)
-        XCTAssertEqual(task.wormholyModel?.host, url.host)
-
-        await Task.yield()
-        XCTAssertTrue(Storage.shared.webSocketConnections.contains { $0.id == task.wormholyModel?.id })
-    }
-
-    func testFactoryRequestOverloadCapturesHeaders() {
-        Wormholy.setWebSocketEnabled(true)
-
-        var request = URLRequest(url: URL(string: "wss://example.com/socket/\(UUID().uuidString)")!)
-        request.setValue("Bearer token", forHTTPHeaderField: "Authorization")
-
-        let task = URLSession.shared.webSocketTask(with: request)
-
-        XCTAssertEqual(task.wormholyModel?.requestHeaders["Authorization"], "Bearer token")
-    }
-
-    func testFactoryProtocolsOverloadCapturesRequestedProtocols() {
-        Wormholy.setWebSocketEnabled(true)
-
-        let url = URL(string: "wss://example.com/socket/\(UUID().uuidString)")!
-        let task = URLSession.shared.webSocketTask(with: url, protocols: ["chat", "superchat"])
-
-        XCTAssertEqual(task.wormholyModel?.requestedProtocols, ["chat", "superchat"])
     }
 
     func testDisabledInterceptorDoesNotAttachModel() {

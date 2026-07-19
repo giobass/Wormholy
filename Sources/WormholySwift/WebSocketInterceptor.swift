@@ -133,44 +133,89 @@ internal enum WebSocketInterceptor {
     /// Swizzles `cancel(with:reason:)` (Swift side) and triggers the Objective-C swizzle of
     /// `send`/`receive` (see URLSessionWebSocketTask+Wormholy.m) on the task's actual runtime
     /// class, the first time that class is seen. Idempotent per class.
-    private static func ensureSwizzledForActualClass(of task: URLSessionWebSocketTask) {
+    internal static func ensureSwizzledForActualClass(of task: URLSessionWebSocketTask) {
         guard let concreteClass = object_getClass(task) else { return }
+        ensureSwizzled(for: concreteClass)
+    }
+
+    internal static func ensureSwizzled(for concreteClass: AnyClass) {
         let key = ObjectIdentifier(concreteClass)
 
         swizzleLock.lock()
         defer { swizzleLock.unlock() }
         guard !swizzledConcreteClasses.contains(key) else { return }
 
-        wormholySwizzleInstanceMethod(concreteClass,
-                                       #selector(URLSessionWebSocketTask.cancel(with:reason:)),
-                                       #selector(URLSessionWebSocketTask.wormholy_cancel(with:reason:)))
-
-        if let swizzlerClass = NSClassFromString("WHWebSocketTaskSwizzler") as? NSObject.Type {
-            let selector = NSSelectorFromString("wormholy_ensureSwizzledFor:")
-            if swizzlerClass.responds(to: selector) {
-                _ = swizzlerClass.perform(selector, with: task)
-            }
+        let cancelSelector = #selector(URLSessionWebSocketTask.cancel(with:reason:))
+        if classDirectlyImplements(cancelSelector, on: concreteClass) ||
+            !inheritsSwizzledMethod(cancelSelector,
+                                    from: concreteClass,
+                                    swizzledClasses: swizzledConcreteClasses) {
+            wormholySwizzleInstanceMethod(concreteClass,
+                                           cancelSelector,
+                                           #selector(URLSessionWebSocketTask.wormholy_cancel(with:reason:)),
+                                           swizzledOwner: URLSessionWebSocketTask.self)
         }
+
+        installMessageOperationSwizzles(for: concreteClass)
 
         swizzledConcreteClasses.insert(key)
     }
+
+    internal static func classDirectlyImplements(_ selector: Selector, on cls: AnyClass) -> Bool {
+        guard let method = class_getInstanceMethod(cls, selector) else { return false }
+        guard let superclass = class_getSuperclass(cls),
+              let inheritedMethod = class_getInstanceMethod(superclass, selector) else {
+            return true
+        }
+        return method != inheritedMethod
+    }
+
+    internal static func inheritsSwizzledMethod(_ selector: Selector,
+                                                from cls: AnyClass,
+                                                swizzledClasses: Set<ObjectIdentifier>) -> Bool {
+        var superclass = class_getSuperclass(cls)
+        while let currentClass = superclass {
+            if classDirectlyImplements(selector, on: currentClass) {
+                return swizzledClasses.contains(ObjectIdentifier(currentClass))
+            }
+            superclass = class_getSuperclass(currentClass)
+        }
+        return false
+    }
+
+    private static func installMessageOperationSwizzles(for concreteClass: AnyClass) {
+        guard let swizzlerClass = NSClassFromString("WHWebSocketTaskSwizzler") as? NSObject.Type else { return }
+        let selector = NSSelectorFromString("wormholy_ensureSwizzledForClass:")
+        guard swizzlerClass.responds(to: selector) else { return }
+        _ = swizzlerClass.perform(selector, with: concreteClass)
+    }
 }
 
-private func wormholySwizzleInstanceMethod(_ affectedClass: AnyClass, _ original: Selector, _ swizzled: Selector) {
+private func wormholySwizzleInstanceMethod(_ affectedClass: AnyClass,
+                                           _ original: Selector,
+                                           _ swizzled: Selector,
+                                           swizzledOwner: AnyClass? = nil) {
     guard let originalMethod = class_getInstanceMethod(affectedClass, original),
-          let swizzledMethod = class_getInstanceMethod(affectedClass, swizzled) else {
+          let swizzledMethod = class_getInstanceMethod(swizzledOwner ?? affectedClass, swizzled) else {
         return
     }
 
+    let originalImplementation = method_getImplementation(originalMethod)
+    let swizzledImplementation = method_getImplementation(swizzledMethod)
     let didAddMethod = class_addMethod(affectedClass,
                                         original,
-                                        method_getImplementation(swizzledMethod),
+                                        swizzledImplementation,
                                         method_getTypeEncoding(swizzledMethod))
     if didAddMethod {
         class_replaceMethod(affectedClass,
                              swizzled,
-                             method_getImplementation(originalMethod),
+                             originalImplementation,
                              method_getTypeEncoding(originalMethod))
+    } else if class_addMethod(affectedClass,
+                               swizzled,
+                               originalImplementation,
+                               method_getTypeEncoding(originalMethod)) {
+        method_setImplementation(originalMethod, swizzledImplementation)
     } else {
         method_exchangeImplementations(originalMethod, swizzledMethod)
     }

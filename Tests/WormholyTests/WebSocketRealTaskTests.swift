@@ -112,6 +112,45 @@ final class WebSocketRealTaskTests: WebSocketTestCase {
         XCTAssertEqual(model.closeReason, "done")
     }
 
+    func testRealTaskSmokeCapturesLifecycleAndTraffic() async throws {
+        Wormholy.setWebSocketEnabled(true)
+        let payload = "smoke-\(UUID().uuidString)"
+        let delegateOpened = expectation(description: "delegate received didOpen")
+        let delegateClosed = expectation(description: "delegate received didClose")
+        let delegate = WebSocketLifecycleDelegate(onOpen: { delegateOpened.fulfill() },
+                                                  onClose: { delegateClosed.fulfill() })
+        let session = URLSession(configuration: .ephemeral, delegate: delegate, delegateQueue: nil)
+        let task = session.webSocketTask(with: Self.remoteEchoURL())
+        addTeardownBlock {
+            task.cancel(with: .goingAway, reason: nil)
+            session.invalidateAndCancel()
+        }
+        let model = try XCTUnwrap(task.wormholyModel)
+        let modelOpened = openedExpectation(in: model)
+
+        task.resume()
+
+        await fulfillment(of: [delegateOpened, modelOpened], timeout: 10)
+        try await task.send(.string(payload))
+        let receivedMessage = try await task.receive()
+        guard case .string(let receivedPayload) = receivedMessage else {
+            return XCTFail("Expected a text WebSocket message.")
+        }
+        XCTAssertEqual(receivedPayload, payload)
+
+        await fulfillment(of: [
+            messageRecordedExpectation(in: model, direction: .sent, text: payload),
+            messageRecordedExpectation(in: model, direction: .received, text: payload)
+        ], timeout: 5)
+
+        let modelClosed = closedExpectation(in: model)
+        task.cancel(with: .normalClosure, reason: Data("smoke".utf8))
+
+        await fulfillment(of: [delegateClosed, modelClosed], timeout: 10)
+        XCTAssertEqual(model.closeCode, .normalClosure)
+        XCTAssertEqual(model.closeReason, "smoke")
+    }
+
     // MARK: - Private
 
     private static func remoteEchoURL() -> URL {
