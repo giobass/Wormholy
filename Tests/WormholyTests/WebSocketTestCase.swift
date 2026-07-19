@@ -22,6 +22,21 @@ class WebSocketTestCase: XCTestCase {
 
     // MARK: - Expectations
 
+    func modelAttachedExpectation(for task: URLSessionWebSocketTask) -> XCTestExpectation {
+        let expectation = expectation(description: "WebSocket model attached")
+        if task.wormholyModel != nil {
+            expectation.fulfill()
+        } else {
+            Storage.shared.$webSocketConnections
+                .dropFirst()
+                .filter { _ in task.wormholyModel != nil }
+                .prefix(1)
+                .sink { _ in expectation.fulfill() }
+                .store(in: &cancellables)
+        }
+        return expectation
+    }
+
     func openedExpectation(in model: WebSocketModel) -> XCTestExpectation {
         let expectation = expectation(description: "recorded didOpen")
         if model.openedAt != nil {

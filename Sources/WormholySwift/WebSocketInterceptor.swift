@@ -90,16 +90,6 @@ internal enum WebSocketInterceptor {
         _ = swizzlerClass.perform(selector)
     }
 
-    private static func runOnMainActorSync(_ operation: @MainActor () -> Void) {
-        if Thread.isMainThread {
-            MainActor.assumeIsolated(operation)
-        } else {
-            DispatchQueue.main.sync {
-                MainActor.assumeIsolated(operation)
-            }
-        }
-    }
-
     fileprivate static func attachModel(to task: URLSessionWebSocketTask,
                                         url: URL?,
                                         headers: [String: String],
@@ -111,23 +101,7 @@ internal enum WebSocketInterceptor {
         }
 
         ensureSwizzledForActualClass(of: task)
-
-        runOnMainActorSync {
-            // Some factory overloads delegate to another one internally for the same task,
-            // which would otherwise attach a second, orphaned model here.
-            if let existing = task.wormholyModel {
-                existing.refineConnectionMetadataIfNeeded(url: url, headers: headers, protocols: protocols)
-                return
-            }
-
-            let model = WebSocketModel(url: url.absoluteString,
-                                        host: url.host,
-                                        scheme: url.scheme,
-                                        requestHeaders: headers,
-                                        requestedProtocols: protocols)
-            task.wormholyModel = model
-            Storage.shared.saveWebSocketConnection(model)
-        }
+        WHWebSocketRecorder.prepare(task, url: url, headers: headers, protocols: protocols)
     }
 
     /// Swizzles `cancel(with:reason:)` (Swift side) and triggers the Objective-C swizzle of

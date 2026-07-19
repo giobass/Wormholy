@@ -26,6 +26,7 @@ private final class MessageBatch {
 
 private final class WebSocketEventRecorder {
     fileprivate enum Event {
+        case prepare(URLSessionWebSocketTask, URL, [String: String], [String])
         case message(URLSessionWebSocketTask, WebSocketMessageDirection, URLSessionWebSocketTask.Message, Date)
         case messages(MessageBatch)
         case opened(URLSessionWebSocketTask, String?, Date)
@@ -35,6 +36,19 @@ private final class WebSocketEventRecorder {
         @MainActor
         func apply() {
             switch self {
+            case let .prepare(task, url, headers, protocols):
+                // Factory overloads can create the same task more than once internally.
+                if let model = task.wormholyModel {
+                    model.refineConnectionMetadataIfNeeded(url: url, headers: headers, protocols: protocols)
+                } else {
+                    let model = WebSocketModel(url: url.absoluteString,
+                                               host: url.host,
+                                               scheme: url.scheme,
+                                               requestHeaders: headers,
+                                               requestedProtocols: protocols)
+                    task.wormholyModel = model
+                    Storage.shared.saveWebSocketConnection(model)
+                }
             case .message:
                 return
             case let .messages(batch):
@@ -78,6 +92,8 @@ private final class WebSocketEventRecorder {
 
     private func append(_ event: Event) {
         switch event {
+        case .prepare:
+            pendingEvents.append(event)
         case let .message(task, direction, message, date):
             let taskID = ObjectIdentifier(task)
             let batch = messageBatches[taskID] ?? makeMessageBatch(for: task, taskID: taskID)
@@ -154,6 +170,13 @@ public final class WHWebSocketRecorder: NSObject {
 
     @objc public static func recordError(_ task: URLSessionWebSocketTask, error: Error) {
         record(.error(task, error, Date()))
+    }
+
+    internal static func prepare(_ task: URLSessionWebSocketTask,
+                                 url: URL,
+                                 headers: [String: String],
+                                 protocols: [String]) {
+        eventRecorder.record(.prepare(task, url, headers, protocols))
     }
 
     private static func record(_ event: WebSocketEventRecorder.Event) {

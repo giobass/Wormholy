@@ -24,6 +24,7 @@ final class WebSocketRealTaskTests: WebSocketTestCase {
 
         let task = URLSession.shared.webSocketTask(with: Self.remoteEchoURL())
         addTeardownBlock { task.cancel(with: .goingAway, reason: nil) }
+        await fulfillment(of: [modelAttachedExpectation(for: task)], timeout: 1)
         task.resume()
         let model = try XCTUnwrap(task.wormholyModel)
 
@@ -49,6 +50,7 @@ final class WebSocketRealTaskTests: WebSocketTestCase {
 
         let task = URLSession.shared.webSocketTask(with: Self.remoteEchoURL())
         addTeardownBlock { task.cancel(with: .goingAway, reason: nil) }
+        await fulfillment(of: [modelAttachedExpectation(for: task)], timeout: 1)
         task.resume()
         let model = try XCTUnwrap(task.wormholyModel)
 
@@ -93,6 +95,7 @@ final class WebSocketRealTaskTests: WebSocketTestCase {
             task.cancel(with: .goingAway, reason: nil)
             session.invalidateAndCancel()
         }
+        await fulfillment(of: [modelAttachedExpectation(for: task)], timeout: 1)
         let model = try XCTUnwrap(task.wormholyModel)
 
         let modelOpened = openedExpectation(in: model)
@@ -125,6 +128,7 @@ final class WebSocketRealTaskTests: WebSocketTestCase {
             task.cancel(with: .goingAway, reason: nil)
             session.invalidateAndCancel()
         }
+        await fulfillment(of: [modelAttachedExpectation(for: task)], timeout: 1)
         let model = try XCTUnwrap(task.wormholyModel)
         let modelOpened = openedExpectation(in: model)
 

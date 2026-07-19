@@ -4,6 +4,24 @@
 import XCTest
 @testable import WormholySwift
 
+private final class LockedTaskBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storedTask: URLSessionWebSocketTask?
+
+    var task: URLSessionWebSocketTask? {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return storedTask
+        }
+        set {
+            lock.lock()
+            defer { lock.unlock() }
+            storedTask = newValue
+        }
+    }
+}
+
 @MainActor
 final class WebSocketInterceptorTests: WebSocketTestCase {
 
@@ -41,6 +59,7 @@ final class WebSocketInterceptorTests: WebSocketTestCase {
                                                   onClose: { delegateClosed.fulfill() })
         let session = URLSession(configuration: .ephemeral, delegate: delegate, delegateQueue: nil)
         let task = session.webSocketTask(with: URL(string: "wss://example.com/socket/\(UUID().uuidString)")!)
+        await fulfillment(of: [modelAttachedExpectation(for: task)], timeout: 1)
         let model = try XCTUnwrap(task.wormholyModel)
         let proxy = try XCTUnwrap(session.delegate as? URLSessionWebSocketDelegate)
         let didOpen = try XCTUnwrap(proxy.urlSession(_:webSocketTask:didOpenWithProtocol:))
@@ -60,28 +79,40 @@ final class WebSocketInterceptorTests: WebSocketTestCase {
         XCTAssertEqual(model.closeReason, "done")
     }
 
-    func testBackgroundFactoryAttachesAndPublishesModel() async {
+    func testBackgroundFactoryReturnsWhileMainActorIsBlocked() async throws {
         Wormholy.setWebSocketEnabled(true)
-        let modelPublished = expectation(description: "background task model published")
+        let factoryReturned = expectation(description: "background factory returned")
+        let taskBox = LockedTaskBox()
 
         DispatchQueue.global(qos: .userInitiated).async {
             let url = URL(string: "wss://example.com/socket/\(UUID().uuidString)")!
             let task = URLSession.shared.webSocketTask(with: url)
-
-            DispatchQueue.main.async {
-                XCTAssertEqual(task.wormholyModel?.url, url.absoluteString)
-                XCTAssertTrue(Storage.shared.webSocketConnections.contains { $0.id == task.wormholyModel?.id })
-                modelPublished.fulfill()
-            }
+            taskBox.task = task
+            factoryReturned.fulfill()
         }
 
-        await fulfillment(of: [modelPublished], timeout: 1)
+        XCTAssertEqual(XCTWaiter().wait(for: [factoryReturned], timeout: 0.2), .completed)
+        let task = try XCTUnwrap(taskBox.task)
+        await fulfillment(of: [modelAttachedExpectation(for: task)], timeout: 1)
+        XCTAssertTrue(Storage.shared.webSocketConnections.contains { $0.id == task.wormholyModel?.id })
+    }
+
+    func testRecorderBuffersEventBeforeModelIsAttached() async throws {
+        Wormholy.setWebSocketEnabled(true)
+        let task = URLSession.shared.webSocketTask(with: URL(string: "wss://example.com/socket/\(UUID().uuidString)")!)
+
+        WHWebSocketRecorder.recordSentText(task, text: "early message")
+
+        await fulfillment(of: [modelAttachedExpectation(for: task)], timeout: 1)
+        let model = try XCTUnwrap(task.wormholyModel)
+        XCTAssertEqual(model.messages.map(\.text), ["early message"])
     }
 
     func testRecorderKeepsLatestPendingMessagesWithinLimit() async throws {
         Wormholy.setWebSocketEnabled(true)
         Wormholy.webSocketMessageLimit = 2
         let task = URLSession.shared.webSocketTask(with: URL(string: "wss://example.com/socket/\(UUID().uuidString)")!)
+        await fulfillment(of: [modelAttachedExpectation(for: task)], timeout: 1)
         let model = try XCTUnwrap(task.wormholyModel)
         let messagesRecorded = expectation(description: "latest messages recorded")
 
@@ -104,6 +135,7 @@ final class WebSocketInterceptorTests: WebSocketTestCase {
         Wormholy.setWebSocketEnabled(true)
         Wormholy.webSocketMessageLimit = nil
         let task = URLSession.shared.webSocketTask(with: URL(string: "wss://example.com/socket/\(UUID().uuidString)")!)
+        await fulfillment(of: [modelAttachedExpectation(for: task)], timeout: 1)
         let model = try XCTUnwrap(task.wormholyModel)
         let messagesRecorded = expectation(description: "messages recorded in one publication")
         var publicationCount = 0
@@ -133,6 +165,9 @@ final class WebSocketInterceptorTests: WebSocketTestCase {
         let secondTaskURL = URL(string: "wss://example.com/second/\(UUID().uuidString)")!
         let firstTask = URLSession.shared.webSocketTask(with: firstTaskURL)
         let secondTask = URLSession.shared.webSocketTask(with: secondTaskURL)
+        let firstModelAttached = modelAttachedExpectation(for: firstTask)
+        let secondModelAttached = modelAttachedExpectation(for: secondTask)
+        await fulfillment(of: [firstModelAttached, secondModelAttached], timeout: 1)
         let firstModel = try XCTUnwrap(firstTask.wormholyModel)
         let secondModel = try XCTUnwrap(secondTask.wormholyModel)
         let firstMessagesRecorded = expectation(description: "first task messages recorded")
@@ -167,6 +202,7 @@ final class WebSocketInterceptorTests: WebSocketTestCase {
     func testRecorderFlushesMessagesBeforeLifecycleEvent() async throws {
         Wormholy.setWebSocketEnabled(true)
         let task = URLSession.shared.webSocketTask(with: URL(string: "wss://example.com/socket/\(UUID().uuidString)")!)
+        await fulfillment(of: [modelAttachedExpectation(for: task)], timeout: 1)
         let model = try XCTUnwrap(task.wormholyModel)
         let connectionClosed = expectation(description: "connection closed after messages are recorded")
 
@@ -215,13 +251,14 @@ final class WebSocketInterceptorTests: WebSocketTestCase {
         XCTAssertNil(task.wormholyModel)
     }
 
-    func testNonIgnoredHostStillAttachesModel() {
+    func testNonIgnoredHostStillAttachesModel() async {
         Wormholy.setWebSocketEnabled(true)
         Wormholy.ignoredHosts = ["example.com"]
 
         let url = URL(string: "wss://other.com/socket/\(UUID().uuidString)")!
         let task = URLSession.shared.webSocketTask(with: url)
 
+        await fulfillment(of: [modelAttachedExpectation(for: task)], timeout: 1)
         XCTAssertNotNil(task.wormholyModel)
     }
 

@@ -64,28 +64,33 @@ final class WebSocketSwizzlingTests: WebSocketTestCase {
         Wormholy.setWebSocketEnabled(true)
         let url = URL(string: "wss://example.com/socket/\(UUID().uuidString)")!
         let task = URLSession.shared.webSocketTask(with: url)
+        let modelAttached = modelAttachedExpectation(for: task)
 
+        await fulfillment(of: [modelAttached], timeout: 1)
         XCTAssertEqual(task.wormholyModel?.url, url.absoluteString)
         XCTAssertEqual(task.wormholyModel?.host, url.host)
-        await Task.yield()
         XCTAssertTrue(Storage.shared.webSocketConnections.contains { $0.id == task.wormholyModel?.id })
     }
 
-    func testFactoryRequestOverloadCapturesHeaders() {
+    func testFactoryRequestOverloadCapturesHeaders() async throws {
         Wormholy.setWebSocketEnabled(true)
         var request = URLRequest(url: URL(string: "wss://example.com/socket/\(UUID().uuidString)")!)
         request.setValue("Bearer token", forHTTPHeaderField: "Authorization")
 
         let task = URLSession.shared.webSocketTask(with: request)
-        XCTAssertEqual(task.wormholyModel?.requestHeaders["Authorization"], "Bearer token")
+        await fulfillment(of: [modelAttachedExpectation(for: task)], timeout: 1)
+        let model = try XCTUnwrap(task.wormholyModel)
+        XCTAssertEqual(model.requestHeaders["Authorization"], "Bearer token")
     }
 
-    func testFactoryProtocolsOverloadCapturesRequestedProtocols() {
+    func testFactoryProtocolsOverloadCapturesRequestedProtocols() async throws {
         Wormholy.setWebSocketEnabled(true)
         let url = URL(string: "wss://example.com/socket/\(UUID().uuidString)")!
 
         let task = URLSession.shared.webSocketTask(with: url, protocols: ["chat", "superchat"])
-        XCTAssertEqual(task.wormholyModel?.requestedProtocols, ["chat", "superchat"])
+        await fulfillment(of: [modelAttachedExpectation(for: task)], timeout: 1)
+        let model = try XCTUnwrap(task.wormholyModel)
+        XCTAssertEqual(model.requestedProtocols, ["chat", "superchat"])
     }
 
     // MARK: - Class Inheritance
