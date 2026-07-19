@@ -14,6 +14,7 @@ class WebSocketTestCase: XCTestCase {
     override func tearDown() async throws {
         cancellables.removeAll()
         Wormholy.setWebSocketEnabled(false)
+        Wormholy.webSocketMessageLimit = nil
         Wormholy.ignoredHosts = []
         Storage.shared.clearWebSocketConnections()
         try await super.tearDown()
