@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 import Foundation
 
+@MainActor
 final class WebSocketEchoClient: NSObject {
     static let sharedInstance = WebSocketEchoClient()
 
@@ -36,9 +37,7 @@ final class WebSocketEchoClient: NSObject {
     private var isConnected = false {
         didSet {
             guard isConnected != oldValue else { return }
-            DispatchQueue.main.async { [isConnected, onConnectionStateChanged] in
-                onConnectionStateChanged?(isConnected)
-            }
+            onConnectionStateChanged?(isConnected)
         }
     }
 
@@ -67,10 +66,14 @@ final class WebSocketEchoClient: NSObject {
         }
 
         task.send(.string(message)) { [weak self] error in
-            if let error {
-                self?.emit(.failed(error.localizedDescription))
-            } else {
-                self?.emit(.sent(message))
+            Task { @MainActor [weak self] in
+                guard let self, self.task === task else { return }
+
+                if let error {
+                    self.emit(.failed(error.localizedDescription))
+                } else {
+                    self.emit(.sent(message))
+                }
             }
         }
     }
@@ -87,46 +90,65 @@ final class WebSocketEchoClient: NSObject {
 
     private func listen(on task: URLSessionWebSocketTask) {
         task.receive { [weak self, weak task] result in
-            guard let self, let task, self.task === task else { return }
+            Task { @MainActor [weak self, weak task] in
+                guard let self, let task, self.task === task else { return }
 
-            switch result {
-            case .success(let message):
-                switch message {
-                case .string(let text):
-                    self.emit(.received(text))
-                case .data(let data):
-                    self.emit(.received("<binary \(data.count) bytes>"))
-                @unknown default:
-                    break
+                switch result {
+                case .success(let message):
+                    switch message {
+                    case .string(let text):
+                        self.emit(.received(text))
+                    case .data(let data):
+                        self.emit(.received("<binary \(data.count) bytes>"))
+                    @unknown default:
+                        break
+                    }
+                    self.listen(on: task)
+                case .failure(let error):
+                    self.emit(.failed(error.localizedDescription))
+                    self.isConnected = false
                 }
-                self.listen(on: task)
-            case .failure(let error):
-                self.emit(.failed(error.localizedDescription))
-                self.isConnected = false
             }
         }
     }
 
     private func emit(_ event: Event) {
-        DispatchQueue.main.async { [onEvent] in
-            onEvent?(event)
-        }
+        onEvent?(event)
     }
 }
 
 extension WebSocketEchoClient: URLSessionWebSocketDelegate {
-    func urlSession(_ session: URLSession,
-                    webSocketTask: URLSessionWebSocketTask,
-                    didOpenWithProtocol protocol: String?) {
-        isConnected = true
-        emit(.connected(webSocketTask.currentRequest?.url ?? webSocketTask.originalRequest?.url ?? URL(string: "wss://unknown")!))
+    nonisolated func urlSession(_ session: URLSession,
+                                webSocketTask: URLSessionWebSocketTask,
+                                didOpenWithProtocol protocol: String?) {
+        Task { @MainActor [weak self] in
+            self?.handleOpened(webSocketTask)
+        }
     }
 
-    func urlSession(_ session: URLSession,
-                    webSocketTask: URLSessionWebSocketTask,
-                    didCloseWith closeCode: URLSessionWebSocketTask.CloseCode,
-                    reason: Data?) {
+    nonisolated func urlSession(_ session: URLSession,
+                                webSocketTask: URLSessionWebSocketTask,
+                                didCloseWith closeCode: URLSessionWebSocketTask.CloseCode,
+                                reason: Data?) {
+        Task { @MainActor [weak self] in
+            self?.handleClosed(webSocketTask, code: closeCode, reason: reason)
+        }
+    }
+
+    private func handleOpened(_ task: URLSessionWebSocketTask) {
+        guard self.task === task else { return }
+
+        isConnected = true
+        let url = task.currentRequest?.url ?? task.originalRequest?.url ?? URL(string: "wss://unknown")!
+        emit(.connected(url))
+    }
+
+    private func handleClosed(_ task: URLSessionWebSocketTask,
+                              code: URLSessionWebSocketTask.CloseCode,
+                              reason: Data?) {
+        guard self.task === task else { return }
+
         isConnected = false
-        emit(.closed(closeCode, reason.flatMap { String(data: $0, encoding: .utf8) }))
+        emit(.closed(code, reason.flatMap { String(data: $0, encoding: .utf8) }))
     }
 }
