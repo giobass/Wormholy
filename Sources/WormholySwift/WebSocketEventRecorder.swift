@@ -12,6 +12,10 @@ private final class MessageBatch {
     }
 
     func append(_ message: WebSocketMessage, limit: Int?) {
+        guard limit != 0 else {
+            messages.removeAll(keepingCapacity: true)
+            return
+        }
         messages.append(message)
 
         guard let limit, messages.count > limit else { return }

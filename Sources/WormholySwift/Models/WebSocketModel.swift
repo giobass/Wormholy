@@ -148,10 +148,18 @@ internal class WebSocketModel: Identifiable, ObservableObject, Equatable {
     }
 
     internal func addMessages(_ newMessages: [WebSocketMessage]) {
-        guard !newMessages.isEmpty else { return }
+        guard let limit = WebSocketConfiguration.messageLimit?.intValue else {
+            self.messages.append(contentsOf: newMessages)
+            return
+        }
+
+        guard limit > 0 else {
+            self.messages.removeAll(keepingCapacity: true)
+            return
+        }
 
         self.messages.append(contentsOf: newMessages)
-        if let limit = WebSocketConfiguration.messageLimit?.intValue, limit >= 0, self.messages.count > limit {
+        if self.messages.count > limit {
             self.messages.removeFirst(self.messages.count - limit)
         }
     }

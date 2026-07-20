@@ -78,6 +78,31 @@ final class WebSocketModelTests: XCTestCase {
         XCTAssertEqual(model.messages.map(\.text), ["0", "1", "2"])
     }
 
+    func testZeroWebSocketMessageLimitClearsExistingAndNewMessages() {
+        let model = WebSocketModel(url: "wss://example.com/socket", startDate: baseDate)
+        Wormholy.webSocketMessageLimit = nil
+        model.addMessage(direction: .sent, message: .string("first"), at: baseDate)
+        model.addMessage(direction: .received, message: .string("second"), at: baseDate.addingTimeInterval(minute))
+
+        Wormholy.webSocketMessageLimit = 0
+        model.addMessages([])
+        model.addMessage(direction: .sent, message: .string("third"), at: baseDate.addingTimeInterval(minute * 2))
+
+        XCTAssertEqual(Wormholy.webSocketMessageLimit?.intValue, 0)
+        XCTAssertTrue(model.messages.isEmpty)
+    }
+
+    func testNegativeWebSocketMessageLimitIsTreatedAsUnlimited() {
+        Wormholy.webSocketMessageLimit = -1
+        let model = WebSocketModel(url: "wss://example.com/socket", startDate: baseDate)
+
+        model.addMessage(direction: .sent, message: .string("first"), at: baseDate)
+        model.addMessage(direction: .received, message: .string("second"), at: baseDate.addingTimeInterval(minute))
+
+        XCTAssertNil(Wormholy.webSocketMessageLimit)
+        XCTAssertEqual(model.messages.map(\.text), ["first", "second"])
+    }
+
     func testMarkClosedRecordsCodeAndReason() {
         let model = WebSocketModel(url: "wss://example.com/socket", startDate: baseDate)
         model.markOpened(at: baseDate.addingTimeInterval(minute))

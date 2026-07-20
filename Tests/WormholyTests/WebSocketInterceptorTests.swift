@@ -131,6 +131,37 @@ final class WebSocketInterceptorTests: WebSocketTestCase {
         XCTAssertEqual(model.messages.map(\.text), ["second", "third"])
     }
 
+    func testRecorderZeroLimitClearsPreviouslyPublishedMessages() async throws {
+        Wormholy.setWebSocketEnabled(true)
+        Wormholy.webSocketMessageLimit = nil
+        let task = URLSession.shared.webSocketTask(with: URL(string: "wss://example.com/socket/\(UUID().uuidString)")!)
+        await fulfillment(of: [modelAttachedExpectation(for: task)], timeout: 1)
+        let model = try XCTUnwrap(task.wormholyModel)
+        let firstMessageRecorded = expectation(description: "first message recorded")
+
+        model.$messages
+            .dropFirst()
+            .filter { $0.map(\.text) == ["first"] }
+            .prefix(1)
+            .sink { _ in firstMessageRecorded.fulfill() }
+            .store(in: &cancellables)
+        WHWebSocketRecorder.recordSentText(task, text: "first")
+        await fulfillment(of: [firstMessageRecorded], timeout: 1)
+
+        Wormholy.webSocketMessageLimit = 0
+        let messagesCleared = expectation(description: "messages cleared")
+        model.$messages
+            .dropFirst()
+            .filter(\.isEmpty)
+            .prefix(1)
+            .sink { _ in messagesCleared.fulfill() }
+            .store(in: &cancellables)
+        WHWebSocketRecorder.recordReceivedText(task, text: "second")
+
+        await fulfillment(of: [messagesCleared], timeout: 1)
+        XCTAssertTrue(model.messages.isEmpty)
+    }
+
     func testRecorderPublishesMessageBurstOnce() async throws {
         Wormholy.setWebSocketEnabled(true)
         Wormholy.webSocketMessageLimit = nil
