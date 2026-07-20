@@ -41,6 +41,11 @@ internal struct BodyDetailView: View {
         }
         self.kind = kind
     }
+
+    init(webSocketMessage: WebSocketMessage) {
+        self.dataBody = WebSocketModelBeautifier.bodyText(webSocketMessage)
+        self.kind = .webSocketMessage
+    }
     
     var body: some View {
         VStack(spacing: 0) {

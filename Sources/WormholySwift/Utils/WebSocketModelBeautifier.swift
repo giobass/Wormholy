@@ -59,10 +59,14 @@ internal enum WebSocketModelBeautifier {
     }
 
     static func bodyText(_ message: WebSocketMessage) -> String {
-        if let text = message.text {
+        switch message.message {
+        case .string(let text):
             return text.prettyPrintedJSON ?? text
+        case .data(let data):
+            return "Base64 (\(data.count) bytes): \(data.base64EncodedString())"
+        @unknown default:
+            return "<unknown message type>"
         }
-        return "<binary \(message.byteCount) bytes>"
     }
 
     static func messageMetadata(_ message: WebSocketMessage) -> String {

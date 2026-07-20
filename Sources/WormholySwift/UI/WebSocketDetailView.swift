@@ -109,9 +109,9 @@ private struct WebSocketMessageRow: View {
                 .font(.system(.footnote, design: .monospaced))
                 .lineLimit(3)
 
-            if let data = message.data {
+            if message.data != nil {
                 NavigationLink("View body") {
-                    BodyDetailView(dataBody: data, kind: .webSocketMessage)
+                    BodyDetailView(webSocketMessage: message)
                 }
                 .font(.footnote)
             }

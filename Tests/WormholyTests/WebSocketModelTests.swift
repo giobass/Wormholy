@@ -239,4 +239,18 @@ final class WebSocketModelTests: XCTestCase {
                          at: baseDate.addingTimeInterval(minute))
         XCTAssertEqual(model.messages.first.map(WebSocketModelBeautifier.bodyText), "plain text message")
     }
+
+    func testWebSocketBinaryBodyAndExportUseBase64() throws {
+        let binaryData = Data([0xFF, 0x00, 0x01])
+        let model = WebSocketModel(url: "wss://example.com/socket", startDate: baseDate)
+        model.addMessage(direction: .received, message: .data(binaryData), at: baseDate)
+
+        let message = try XCTUnwrap(model.messages.first)
+        let expectedBody = "Base64 (3 bytes): /wAB"
+        let export = WebSocketModelBeautifier.txtExport(connection: model)
+
+        XCTAssertEqual(message.byteCount, 3)
+        XCTAssertEqual(WebSocketModelBeautifier.bodyText(message), expectedBody)
+        XCTAssertTrue(export.contains(expectedBody))
+    }
 }
