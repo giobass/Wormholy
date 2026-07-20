@@ -62,6 +62,8 @@ final class WebSocketModelTests: XCTestCase {
         model.addMessage(direction: .sent, message: .string("third"), at: baseDate.addingTimeInterval(minute * 3))
 
         XCTAssertEqual(model.messages.map(\.text), ["second", "third"])
+        XCTAssertEqual(model.sentMessageCount, 1)
+        XCTAssertEqual(model.receivedMessageCount, 1)
     }
 
     func testNilWebSocketMessageLimitKeepsCompleteHistory() {
@@ -90,6 +92,8 @@ final class WebSocketModelTests: XCTestCase {
 
         XCTAssertEqual(Wormholy.webSocketMessageLimit?.intValue, 0)
         XCTAssertTrue(model.messages.isEmpty)
+        XCTAssertEqual(model.sentMessageCount, 0)
+        XCTAssertEqual(model.receivedMessageCount, 0)
     }
 
     func testNegativeWebSocketMessageLimitIsTreatedAsUnlimited() {

@@ -202,7 +202,7 @@ final class WebSocketInterceptorTests: WebSocketTestCase {
         XCTAssertEqual(publicationCount, 1)
     }
 
-    func testRecorderAppliesPendingMessageLimitPerTask() async throws {
+    func testRecorderRetainsLatestMessagesAcrossLargeInterleavedBurst() async throws {
         Wormholy.setWebSocketEnabled(true)
         Wormholy.webSocketMessageLimit = 10
         let firstTaskURL = URL(string: "wss://example.com/first/\(UUID().uuidString)")!
@@ -216,8 +216,8 @@ final class WebSocketInterceptorTests: WebSocketTestCase {
         let secondModel = try XCTUnwrap(secondTask.wormholyModel)
         let firstMessagesRecorded = expectation(description: "first task messages recorded")
         let secondMessagesRecorded = expectation(description: "second task messages recorded")
-        let expectedFirstMessages = (90..<100).map { "first-\($0)" }
-        let expectedSecondMessages = (90..<100).map { "second-\($0)" }
+        let expectedFirstMessages = (990..<1_000).map { "first-\($0)" }
+        let expectedSecondMessages = (990..<1_000).map { "second-\($0)" }
 
         firstModel.$messages
             .dropFirst()
@@ -233,7 +233,7 @@ final class WebSocketInterceptorTests: WebSocketTestCase {
             .sink { _ in secondMessagesRecorded.fulfill() }
             .store(in: &cancellables)
 
-        for index in 0..<100 {
+        for index in 0..<1_000 {
             WHWebSocketRecorder.recordSentText(firstTask, text: "first-\(index)")
             WHWebSocketRecorder.recordReceivedText(secondTask, text: "second-\(index)")
         }

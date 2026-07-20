@@ -5,26 +5,18 @@ import Foundation
 
 private final class MessageBatch {
     let task: URLSessionWebSocketTask
-    private var messages: [WebSocketMessage] = []
+    private var messages = WebSocketMessageRingBuffer()
 
     init(task: URLSessionWebSocketTask) {
         self.task = task
     }
 
     func append(_ message: WebSocketMessage, limit: Int?) {
-        guard limit != 0 else {
-            messages.removeAll(keepingCapacity: true)
-            return
-        }
-        messages.append(message)
-
-        guard let limit, messages.count > limit else { return }
-        messages.removeFirst(messages.count - limit)
+        messages.append(message, limit: limit)
     }
 
     func drain() -> [WebSocketMessage] {
-        defer { messages.removeAll(keepingCapacity: true) }
-        return messages
+        messages.drain()
     }
 }
 

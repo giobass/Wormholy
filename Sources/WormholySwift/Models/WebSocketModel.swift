@@ -78,6 +78,8 @@ internal class WebSocketModel: Identifiable, ObservableObject, Equatable {
     internal let startDate: Date
 
     @Published internal private(set) var messages: [WebSocketMessage] = []
+    internal private(set) var sentMessageCount = 0
+    internal private(set) var receivedMessageCount = 0
     @Published internal private(set) var openedAt: Date?
     @Published internal private(set) var negotiatedProtocol: String?
     @Published internal private(set) var closedAt: Date?
@@ -149,18 +151,35 @@ internal class WebSocketModel: Identifiable, ObservableObject, Equatable {
 
     internal func addMessages(_ newMessages: [WebSocketMessage]) {
         guard let limit = WebSocketConfiguration.messageLimit?.intValue else {
+            updateMessageCounts(for: newMessages, by: 1)
             self.messages.append(contentsOf: newMessages)
             return
         }
 
         guard limit > 0 else {
+            sentMessageCount = 0
+            receivedMessageCount = 0
             self.messages.removeAll(keepingCapacity: true)
             return
         }
 
+        updateMessageCounts(for: newMessages, by: 1)
         self.messages.append(contentsOf: newMessages)
         if self.messages.count > limit {
-            self.messages.removeFirst(self.messages.count - limit)
+            let removedCount = self.messages.count - limit
+            updateMessageCounts(for: self.messages.prefix(removedCount), by: -1)
+            self.messages.removeFirst(removedCount)
+        }
+    }
+
+    private func updateMessageCounts<S: Sequence>(for messages: S, by value: Int) where S.Element == WebSocketMessage {
+        for message in messages {
+            switch message.direction {
+            case .sent:
+                sentMessageCount += value
+            case .received:
+                receivedMessageCount += value
+            }
         }
     }
 

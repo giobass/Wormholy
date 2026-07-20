@@ -17,8 +17,8 @@ internal enum WebSocketModelBeautifier {
             "**Opened Time:** \(formatDate(connection.openedAt))",
             "**Closed Time:** \(formatDate(connection.closedAt))",
             "**Duration:** \(duration(connection))",
-            "**Sent Messages:** \(connection.messages.filter { $0.direction == .sent }.count)",
-            "**Received Messages:** \(connection.messages.filter { $0.direction == .received }.count)",
+            "**Sent Messages:** \(connection.sentMessageCount)",
+            "**Received Messages:** \(connection.receivedMessageCount)",
             "**Total Messages:** \(connection.messages.count)"
         ]
 
