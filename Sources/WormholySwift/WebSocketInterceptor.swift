@@ -106,7 +106,11 @@ internal enum WebSocketInterceptor {
         }
 
         ensureSwizzledForActualClass(of: task)
-        WHWebSocketRecorder.prepare(task, url: url, headers: headers, protocols: protocols)
+        WHWebSocketRecorder.prepare(task,
+                                    url: url,
+                                    headers: headers,
+                                    protocols: protocols,
+                                    at: Date())
     }
 
     /// Swizzles `cancel(with:reason:)` (Swift side) and triggers the Objective-C swizzle of

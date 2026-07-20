@@ -30,7 +30,7 @@ private final class MessageBatch {
 
 private final class WebSocketEventRecorder {
     fileprivate enum Event {
-        case prepare(URLSessionWebSocketTask, URL, [String: String], [String])
+        case prepare(URLSessionWebSocketTask, URL, [String: String], [String], Date)
         case message(URLSessionWebSocketTask, WebSocketMessageDirection, URLSessionWebSocketTask.Message, Date)
         case messages(MessageBatch)
         case opened(URLSessionWebSocketTask, String?, Date)
@@ -40,7 +40,7 @@ private final class WebSocketEventRecorder {
         @MainActor
         func apply() {
             switch self {
-            case let .prepare(task, url, headers, protocols):
+            case let .prepare(task, url, headers, protocols, date):
                 // Factory overloads can create the same task more than once internally.
                 if let model = task.wormholyModel {
                     model.refineConnectionMetadataIfNeeded(url: url, headers: headers, protocols: protocols)
@@ -49,7 +49,8 @@ private final class WebSocketEventRecorder {
                                                host: url.host,
                                                scheme: url.scheme,
                                                requestHeaders: headers,
-                                               requestedProtocols: protocols)
+                                               requestedProtocols: protocols,
+                                               startDate: date)
                     task.wormholyModel = model
                     Storage.shared.saveWebSocketConnection(model)
                 }
@@ -179,8 +180,9 @@ public final class WHWebSocketRecorder: NSObject {
     internal static func prepare(_ task: URLSessionWebSocketTask,
                                  url: URL,
                                  headers: [String: String],
-                                 protocols: [String]) {
-        eventRecorder.record(.prepare(task, url, headers, protocols))
+                                 protocols: [String],
+                                 at date: Date) {
+        eventRecorder.record(.prepare(task, url, headers, protocols, date))
     }
 
     private static func record(_ event: WebSocketEventRecorder.Event) {

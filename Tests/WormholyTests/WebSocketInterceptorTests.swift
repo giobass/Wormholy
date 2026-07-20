@@ -7,18 +7,25 @@ import XCTest
 private final class LockedTaskBox: @unchecked Sendable {
     private let lock = NSLock()
     private var storedTask: URLSessionWebSocketTask?
+    private var storedFactoryDate: Date?
 
     var task: URLSessionWebSocketTask? {
-        get {
-            lock.lock()
-            defer { lock.unlock() }
-            return storedTask
-        }
-        set {
-            lock.lock()
-            defer { lock.unlock() }
-            storedTask = newValue
-        }
+        lock.lock()
+        defer { lock.unlock() }
+        return storedTask
+    }
+
+    var factoryDate: Date? {
+        lock.lock()
+        defer { lock.unlock() }
+        return storedFactoryDate
+    }
+
+    func store(task: URLSessionWebSocketTask, factoryDate: Date) {
+        lock.lock()
+        defer { lock.unlock() }
+        storedTask = task
+        storedFactoryDate = factoryDate
     }
 }
 
@@ -86,15 +93,21 @@ final class WebSocketInterceptorTests: WebSocketTestCase {
 
         DispatchQueue.global(qos: .userInitiated).async {
             let url = URL(string: "wss://example.com/socket/\(UUID().uuidString)")!
+            let factoryDate = Date()
             let task = URLSession.shared.webSocketTask(with: url)
-            taskBox.task = task
+            taskBox.store(task: task, factoryDate: factoryDate)
             factoryReturned.fulfill()
         }
 
         XCTAssertEqual(XCTWaiter().wait(for: [factoryReturned], timeout: 0.2), .completed)
         let task = try XCTUnwrap(taskBox.task)
+        let factoryDate = try XCTUnwrap(taskBox.factoryDate)
+        let mainActorAvailableDate = Date()
         await fulfillment(of: [modelAttachedExpectation(for: task)], timeout: 1)
-        XCTAssertTrue(Storage.shared.webSocketConnections.contains { $0.id == task.wormholyModel?.id })
+        let model = try XCTUnwrap(task.wormholyModel)
+        XCTAssertGreaterThanOrEqual(model.startDate, factoryDate)
+        XCTAssertLessThan(model.startDate, mainActorAvailableDate)
+        XCTAssertTrue(Storage.shared.webSocketConnections.contains { $0.id == model.id })
     }
 
     func testRecorderBuffersEventBeforeModelIsAttached() async throws {
