@@ -107,6 +107,22 @@ final class WebSocketModelTests: XCTestCase {
         XCTAssertEqual(model.messages.map(\.text), ["first", "second"])
     }
 
+    func testOutOfRangeWebSocketMessageLimitIsClampedToIntMax() {
+        Wormholy.webSocketMessageLimit = NSNumber(value: UInt64.max)
+
+        XCTAssertEqual(Wormholy.webSocketMessageLimit?.intValue, Int.max)
+    }
+
+    func testFractionalWebSocketMessageLimitIsNormalizedToInteger() {
+        Wormholy.webSocketMessageLimit = 0.5
+        let model = WebSocketModel(url: "wss://example.com/socket", startDate: baseDate)
+
+        model.addMessage(direction: .sent, message: .string("message"), at: baseDate)
+
+        XCTAssertEqual(Wormholy.webSocketMessageLimit?.intValue, 0)
+        XCTAssertTrue(model.messages.isEmpty)
+    }
+
     func testMarkClosedRecordsCodeAndReason() {
         let model = WebSocketModel(url: "wss://example.com/socket", startDate: baseDate)
         model.markOpened(at: baseDate.addingTimeInterval(minute))

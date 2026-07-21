@@ -41,13 +41,22 @@ public class Wormholy: NSObject
     /// Limit the number of messages retained for each WebSocket connection.
     ///
     /// When the limit is reached, Wormholy removes the oldest messages and keeps
-    /// the most recent ones. Set this to `0` to retain no messages; negative
-    /// values are treated as `nil`.
+    /// the most recent ones. Set this to `0` to retain no messages. Negative and
+    /// non-finite values are treated as `nil`; fractional values are
+    /// truncated toward zero and positive values beyond `Int.max` are clamped.
     ///
     /// Defaults to `nil`, which keeps the complete message history for each captured connection.
     @objc public static var webSocketMessageLimit: NSNumber? {
         get { WebSocketConfiguration.messageLimit }
-        set { WebSocketConfiguration.messageLimit = newValue }
+        set {
+            guard let newValue,
+                  newValue.doubleValue.isFinite,
+                  newValue.doubleValue >= 0 else {
+                WebSocketConfiguration.messageLimit = nil
+                return
+            }
+            WebSocketConfiguration.messageLimit = NSNumber(value: Int(clamping: newValue.uint64Value))
+        }
     }
     
     /// Default filter for the search box

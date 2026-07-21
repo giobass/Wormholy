@@ -33,11 +33,6 @@ internal enum WebSocketConfiguration {
         set {
             lock.lock()
             defer { lock.unlock() }
-
-            guard let newValue, newValue.doubleValue >= 0 else {
-                storedMessageLimit = nil
-                return
-            }
             storedMessageLimit = newValue
         }
     }
