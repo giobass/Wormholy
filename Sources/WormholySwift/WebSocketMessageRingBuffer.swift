@@ -8,7 +8,7 @@ struct WebSocketMessageRingBuffer {
     private var count = 0
 
     mutating func append(_ message: WebSocketMessage, limit: Int?) {
-        guard limit != 0 else {
+        if let limit, limit <= 0 {
             removeAll()
             return
         }

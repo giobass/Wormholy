@@ -45,6 +45,17 @@ final class WebSocketMessageRingBufferTests: XCTestCase {
         XCTAssertEqual(buffer.drain().map(\.text), ["third"])
     }
 
+    func testNegativeLimitClearsPendingMessagesAndBufferCanBeReused() {
+        var buffer = WebSocketMessageRingBuffer()
+        buffer.append(message("first"), limit: nil)
+        buffer.append(message("second"), limit: -1)
+
+        XCTAssertTrue(buffer.drain().isEmpty)
+
+        buffer.append(message("third"), limit: nil)
+        XCTAssertEqual(buffer.drain().map(\.text), ["third"])
+    }
+
     func testDrainResetsBufferForNextBatch() {
         var buffer = WebSocketMessageRingBuffer()
         buffer.append(message("first"), limit: nil)
