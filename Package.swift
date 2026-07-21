@@ -32,7 +32,8 @@ let package = Package(
                 "WormholyObjC"
             ],
             exclude: [
-                "RedirectTest.swift"
+                "RedirectTest.swift",
+                "WebSocketSessionProxyInstallationTests.m"
             ]),
     ]
 )

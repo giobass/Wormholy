@@ -3,6 +3,7 @@
 
 #import "WormholyMethodSwizzling.h"
 #import <objc/runtime.h>
+#import <stdatomic.h>
 
 #if SWIFT_PACKAGE
 @import WormholySwift;
@@ -12,7 +13,7 @@
 
 typedef NSURLSession * _Nonnull (*WHSessionWithDelegateIMP)(id, SEL, NSURLSessionConfiguration *, id<NSURLSessionDelegate>, NSOperationQueue *);
 
-static WHSessionWithDelegateIMP wormholyOrigSessionWithConfigurationDelegateQueue;
+static _Atomic(IMP) wormholyOrigSessionWithConfigurationDelegateQueue;
 static BOOL wormholySessionSwizzleInstalled = NO;
 static const void *WHOriginalDelegateKey = &WHOriginalDelegateKey;
 
@@ -85,7 +86,9 @@ static NSURLSession *Wormholy_sessionWithConfigurationDelegateQueue(id self,
         effectiveDelegate = proxy;
     }
 
-    NSURLSession *session = wormholyOrigSessionWithConfigurationDelegateQueue(self, _cmd, configuration, effectiveDelegate, queue);
+    WHSessionWithDelegateIMP originalImplementation = (WHSessionWithDelegateIMP)atomic_load_explicit(&wormholyOrigSessionWithConfigurationDelegateQueue,
+                                                                                                        memory_order_acquire);
+    NSURLSession *session = originalImplementation(self, _cmd, configuration, effectiveDelegate, queue);
     if (proxy) {
         objc_setAssociatedObject(session, WHOriginalDelegateKey, proxy, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
@@ -101,10 +104,15 @@ static NSURLSession *Wormholy_sessionWithConfigurationDelegateQueue(id self,
     @synchronized (self) {
         if (wormholySessionSwizzleInstalled) return;
 
-        wormholyOrigSessionWithConfigurationDelegateQueue = (WHSessionWithDelegateIMP)WormholyReplaceMethod(@selector(sessionWithConfiguration:delegate:delegateQueue:),
-                                                                                                            (IMP)Wormholy_sessionWithConfigurationDelegateQueue,
-                                                                                                            [NSURLSession class],
-                                                                                                            YES);
+        WormholyReplaceMethodStoringOriginal(@selector(sessionWithConfiguration:delegate:delegateQueue:),
+                                             (IMP)Wormholy_sessionWithConfigurationDelegateQueue,
+                                             [NSURLSession class],
+                                             YES,
+                                             ^(IMP originalImplementation) {
+                                                 atomic_store_explicit(&wormholyOrigSessionWithConfigurationDelegateQueue,
+                                                                       originalImplementation,
+                                                                       memory_order_release);
+                                             });
         wormholySessionSwizzleInstalled = YES;
     }
 }
