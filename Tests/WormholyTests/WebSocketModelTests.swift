@@ -273,4 +273,22 @@ final class WebSocketModelTests: XCTestCase {
         XCTAssertEqual(WebSocketModelBeautifier.bodyText(message), expectedBody)
         XCTAssertTrue(export.contains(expectedBody))
     }
+
+    func testLargeWebSocketBinaryPreviewIsBoundedWhileBodyAndExportRemainComplete() throws {
+        let binaryData = Data(repeating: 0xFF, count: 64 * 1_024)
+        let model = WebSocketModel(url: "wss://example.com/socket", startDate: baseDate)
+        model.addMessage(direction: .received, message: .data(binaryData), at: baseDate)
+
+        let message = try XCTUnwrap(model.messages.first)
+        let completeBase64 = binaryData.base64EncodedString()
+        let fullBody = WebSocketModelBeautifier.bodyText(message)
+        let preview = WebSocketModelBeautifier.messagePreview(message)
+        let export = WebSocketModelBeautifier.txtExport(connection: model)
+        let expectedPreview = "Base64 (\(binaryData.count) bytes): \(Data(binaryData.prefix(80)).base64EncodedString())..."
+
+        XCTAssertEqual(preview, expectedPreview)
+        XCTAssertTrue(fullBody.contains(completeBase64))
+        XCTAssertTrue(export.contains(completeBase64))
+        XCTAssertTrue(export.contains(fullBody))
+    }
 }

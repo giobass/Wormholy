@@ -6,7 +6,8 @@ import SwiftUI
 
 @MainActor
 internal enum WebSocketModelBeautifier {
-    private static let previewLimit = 160
+    private static let previewContentLimit = 160
+    private static let binaryPreviewByteLimit = 80
 
     static func overview(connection: WebSocketModel) -> (LocalizedStringKey, String) {
         var lines = [
@@ -52,18 +53,22 @@ internal enum WebSocketModelBeautifier {
     }
 
     static func messagePreview(_ message: WebSocketMessage) -> String {
-        let body = bodyText(message)
-        if body.count <= previewLimit { return body }
-        let endIndex = body.index(body.startIndex, offsetBy: previewLimit)
-        return String(body[..<endIndex]) + "..."
+        switch message.message {
+        case .string(let text):
+            return formattedText(text, maximumLength: previewContentLimit)
+        case .data(let data):
+            return binaryBodyText(data, maximumByteCount: binaryPreviewByteLimit)
+        @unknown default:
+            return "<unknown message type>"
+        }
     }
 
     static func bodyText(_ message: WebSocketMessage) -> String {
         switch message.message {
         case .string(let text):
-            return text.prettyPrintedJSON ?? text
+            return formattedText(text)
         case .data(let data):
-            return "Base64 (\(data.count) bytes): \(data.base64EncodedString())"
+            return binaryBodyText(data)
         @unknown default:
             return "<unknown message type>"
         }
@@ -105,6 +110,32 @@ internal enum WebSocketModelBeautifier {
         case .data: return "data"
         @unknown default: return "unknown"
         }
+    }
+
+    private static func formattedText(_ text: String, maximumLength: Int? = nil) -> String {
+        let formatted = text.prettyPrintedJSON ?? text
+
+        guard let maximumLength, formatted.count > maximumLength else {
+            return formatted
+        }
+
+        let endIndex = formatted.index(formatted.startIndex, offsetBy: maximumLength)
+        return String(formatted[..<endIndex]) + "..."
+    }
+
+    private static func binaryBodyText(_ data: Data, maximumByteCount: Int? = nil) -> String {
+        let visibleData: Data
+        let isTruncated: Bool
+
+        if let maximumByteCount, data.count > maximumByteCount {
+            visibleData = Data(data.prefix(maximumByteCount))
+            isTruncated = true
+        } else {
+            visibleData = data
+            isTruncated = false
+        }
+
+        return "Base64 (\(data.count) bytes): \(visibleData.base64EncodedString())\(isTruncated ? "..." : "")"
     }
 
     private static func duration(_ connection: WebSocketModel) -> String {
