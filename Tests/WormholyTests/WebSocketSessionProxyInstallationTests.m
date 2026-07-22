@@ -6,6 +6,8 @@
 
 #import <stdatomic.h>
 
+#if DEBUG
+
 typedef NSString *(*WHExampleFactoryIMP)(id, SEL);
 
 static _Atomic(IMP) whExampleOriginalFactory;
@@ -94,3 +96,5 @@ static NSString *WHExampleFactoryWrapper(id self, SEL _cmd) {
 }
 
 @end
+
+#endif
