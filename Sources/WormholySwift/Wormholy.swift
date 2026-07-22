@@ -49,13 +49,25 @@ public class Wormholy: NSObject
     @objc public static var webSocketMessageLimit: NSNumber? {
         get { WebSocketConfiguration.messageLimit }
         set {
-            guard let newValue,
-                  newValue.doubleValue.isFinite,
-                  newValue.doubleValue >= 0 else {
+            guard let newValue, newValue.doubleValue.isFinite else {
                 WebSocketConfiguration.messageLimit = nil
                 return
             }
-            WebSocketConfiguration.messageLimit = NSNumber(value: Int(clamping: newValue.uint64Value))
+
+            var value = newValue.decimalValue
+            guard value >= 0 else {
+                WebSocketConfiguration.messageLimit = nil
+                return
+            }
+
+            guard value < Decimal(Int.max) else {
+                WebSocketConfiguration.messageLimit = NSNumber(value: Int.max)
+                return
+            }
+
+            var truncated = Decimal()
+            NSDecimalRound(&truncated, &value, 0, .down)
+            WebSocketConfiguration.messageLimit = NSNumber(value: NSDecimalNumber(decimal: truncated).int64Value)
         }
     }
     
