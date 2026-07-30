@@ -125,6 +125,12 @@ final class WebSocketModelTests: XCTestCase {
         XCTAssertEqual(Wormholy.webSocketMessageLimit?.intValue, Int.max)
     }
 
+    func testGreatestFiniteDoubleWebSocketMessageLimitIsClampedToIntMax() {
+        Wormholy.webSocketMessageLimit = NSNumber(value: Double.greatestFiniteMagnitude)
+
+        XCTAssertEqual(Wormholy.webSocketMessageLimit?.intValue, Int.max)
+    }
+
     func testDecimalWebSocketMessageLimitAboveIntMaxIsClamped() {
         Wormholy.webSocketMessageLimit = NSDecimalNumber(string: "9223372036854775808")
 
@@ -137,8 +143,8 @@ final class WebSocketModelTests: XCTestCase {
         XCTAssertEqual(Wormholy.webSocketMessageLimit?.intValue, Int.max - 1)
     }
 
-    func testNonFiniteWebSocketMessageLimitsAreTreatedAsUnlimited() {
-        for value in [Double.nan, Double.infinity, -Double.infinity] {
+    func testInvalidWebSocketMessageLimitsAreTreatedAsUnlimited() {
+        for value in [Double.nan, Double.infinity, -Double.infinity, -Double.greatestFiniteMagnitude] {
             Wormholy.webSocketMessageLimit = NSNumber(value: value)
 
             XCTAssertNil(Wormholy.webSocketMessageLimit)
